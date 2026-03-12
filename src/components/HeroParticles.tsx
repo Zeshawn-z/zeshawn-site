@@ -20,12 +20,10 @@ interface Star {
   y: number;
   radius: number;
   baseOpacity: number;
-  // twinkle
   twinkleSpeed: number;
   twinklePhase: number;
-  // glow layers
   glowRadius: number;
-  hue: number; // slight color tint: 200-240 range (blue-ish)
+  hue: number;
 }
 
 interface ShootingStar {
@@ -48,8 +46,12 @@ interface Ripple {
 
 export default function HeroParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const mouseRef = useRef({ x: -1000, y: -1000 });
   const animFrameRef = useRef<number>(0);
+
+  // Smoothed mouse position — lerps toward raw input to prevent jumps
+  const rawMouseRef = useRef({ x: -9999, y: -9999 });
+  const smoothMouseRef = useRef({ x: -9999, y: -9999 });
+  const mouseActiveRef = useRef(false); // tracks whether mouse is within canvas
 
   // Light-mode state
   const particlesRef = useRef<Particle[]>([]);
@@ -67,8 +69,8 @@ export default function HeroParticles() {
       particles.push({
         x: Math.random() * w,
         y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
         radius: Math.random() * 1.5 + 0.5,
         opacity: Math.random() * 0.5 + 0.2,
       });
@@ -88,8 +90,10 @@ export default function HeroParticles() {
         x: Math.random() * w,
         y: Math.random() * h,
         radius: r,
-        baseOpacity: isBright ? Math.random() * 0.4 + 0.6 : Math.random() * 0.5 + 0.15,
-        twinkleSpeed: Math.random() * 2 + 1,
+        baseOpacity: isBright
+          ? Math.random() * 0.4 + 0.6
+          : Math.random() * 0.5 + 0.15,
+        twinkleSpeed: Math.random() * 1.5 + 0.5,
         twinklePhase: Math.random() * Math.PI * 2,
         glowRadius: isBright ? r * 4 : r * 2,
         hue: 200 + Math.random() * 40,
@@ -120,16 +124,20 @@ export default function HeroParticles() {
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // Re-init for current mode
-      lastModeRef.current = null; // force re-init on next frame
+      lastModeRef.current = null; // force re-init
     };
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
-      mouseRef.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+      rawMouseRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
+      mouseActiveRef.current = true;
     };
+
     const handleMouseLeave = () => {
-      mouseRef.current = { x: -1000, y: -1000 };
+      mouseActiveRef.current = false;
     };
 
     const handleClick = (e: MouseEvent) => {
@@ -151,11 +159,30 @@ export default function HeroParticles() {
     canvas.addEventListener("mouseleave", handleMouseLeave);
     canvas.addEventListener("click", handleClick);
 
-    let time = 0;
+    let lastTimestamp = 0;
+    let elapsedTime = 0;
 
-    const animate = () => {
+    const animate = (timestamp: number) => {
+      // Real delta-time for smooth animation regardless of frame rate
+      const dt = lastTimestamp ? Math.min((timestamp - lastTimestamp) / 1000, 0.1) : 0.016;
+      lastTimestamp = timestamp;
+      elapsedTime += dt;
+
+      // Smooth mouse position — lerp toward raw position or fade away
+      const sm = smoothMouseRef.current;
+      const lerpFactor = 1 - Math.pow(0.001, dt); // ~86% per frame at 60fps
+
+      if (mouseActiveRef.current) {
+        const rm = rawMouseRef.current;
+        sm.x += (rm.x - sm.x) * lerpFactor;
+        sm.y += (rm.y - sm.y) * lerpFactor;
+      } else {
+        // Push smoothed mouse far off screen gradually
+        sm.x += (-9999 - sm.x) * lerpFactor * 0.3;
+        sm.y += (-9999 - sm.y) * lerpFactor * 0.3;
+      }
+
       const dark = document.documentElement.classList.contains("dark");
-      time += 0.016; // ~60fps
 
       // Re-init if mode changed
       if (lastModeRef.current !== dark) {
@@ -170,36 +197,60 @@ export default function HeroParticles() {
       ctx.clearRect(0, 0, w, h);
 
       if (dark) {
-        drawStarfield(ctx, w, h, time);
+        drawStarfield(ctx, w, h, elapsedTime, dt);
       } else {
-        drawParticles(ctx, w, h);
+        drawParticles(ctx, w, h, dt);
       }
 
       animFrameRef.current = requestAnimationFrame(animate);
     };
 
     /* ── Light-mode drawing ── */
-    const drawParticles = (c: CanvasRenderingContext2D, W: number, H: number) => {
+    const drawParticles = (
+      c: CanvasRenderingContext2D,
+      W: number,
+      H: number,
+      dt: number
+    ) => {
       const particles = particlesRef.current;
-      const mouse = mouseRef.current;
+      const mouse = smoothMouseRef.current;
+      const dtScale = dt / 0.016; // normalize to 60fps base
 
       for (const p of particles) {
         const dx = mouse.x - p.x;
         const dy = mouse.y - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 120) {
+        const distSq = dx * dx + dy * dy;
+        const dist = Math.sqrt(distSq);
+
+        // Mouse repulsion — with safe distance floor
+        if (dist > 1 && dist < 120) {
           const force = (120 - dist) / 120;
-          p.vx -= (dx / dist) * force * 0.02;
-          p.vy -= (dy / dist) * force * 0.02;
+          // Smooth cubic falloff instead of linear
+          const smoothForce = force * force * 0.015 * dtScale;
+          p.vx -= (dx / dist) * smoothForce;
+          p.vy -= (dy / dist) * smoothForce;
         }
-        p.vx *= 0.99;
-        p.vy *= 0.99;
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) p.x = W;
-        if (p.x > W) p.x = 0;
-        if (p.y < 0) p.y = H;
-        if (p.y > H) p.y = 0;
+
+        // Damping (frame-rate independent)
+        const damping = Math.pow(0.98, dtScale);
+        p.vx *= damping;
+        p.vy *= damping;
+
+        // Speed limit
+        const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (speed > 2) {
+          p.vx = (p.vx / speed) * 2;
+          p.vy = (p.vy / speed) * 2;
+        }
+
+        p.x += p.vx * dtScale;
+        p.y += p.vy * dtScale;
+
+        // Wrap around
+        if (p.x < 0) p.x += W;
+        if (p.x > W) p.x -= W;
+        if (p.y < 0) p.y += H;
+        if (p.y > H) p.y -= H;
 
         c.beginPath();
         c.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
@@ -207,65 +258,93 @@ export default function HeroParticles() {
         c.fill();
       }
 
-      // Connections
+      // Particle-to-particle connections
       for (let i = 0; i < particles.length; i++) {
         for (let j = i + 1; j < particles.length; j++) {
           const dx = particles[i].x - particles[j].x;
           const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 100) {
+          const distSq = dx * dx + dy * dy;
+          if (distSq < 10000) {
+            // 100^2
+            const dist = Math.sqrt(distSq);
+            const alpha = ((100 - dist) / 100) * 0.15;
             c.beginPath();
             c.moveTo(particles[i].x, particles[i].y);
             c.lineTo(particles[j].x, particles[j].y);
-            c.strokeStyle = `rgba(37, 99, 235, ${((100 - dist) / 100) * 0.15})`;
+            c.strokeStyle = `rgba(37, 99, 235, ${alpha})`;
             c.lineWidth = 0.5;
             c.stroke();
           }
         }
       }
 
-      // Mouse connections
-      const mouse2 = mouseRef.current;
-      for (const p of particles) {
-        const dx = mouse2.x - p.x;
-        const dy = mouse2.y - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 150) {
-          c.beginPath();
-          c.moveTo(p.x, p.y);
-          c.lineTo(mouse2.x, mouse2.y);
-          c.strokeStyle = `rgba(37, 99, 235, ${((150 - dist) / 150) * 0.25})`;
-          c.lineWidth = 0.8;
-          c.stroke();
+      // Mouse-to-particle connections (only if mouse is reasonably on screen)
+      if (mouse.x > -1000 && mouse.y > -1000) {
+        for (const p of particles) {
+          const dx = mouse.x - p.x;
+          const dy = mouse.y - p.y;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < 22500) {
+            // 150^2
+            const dist = Math.sqrt(distSq);
+            const alpha = ((150 - dist) / 150) * 0.25;
+            c.beginPath();
+            c.moveTo(p.x, p.y);
+            c.lineTo(mouse.x, mouse.y);
+            c.strokeStyle = `rgba(37, 99, 235, ${alpha})`;
+            c.lineWidth = 0.8;
+            c.stroke();
+          }
         }
       }
     };
 
     /* ── Dark-mode drawing ── */
-    const drawStarfield = (c: CanvasRenderingContext2D, W: number, H: number, t: number) => {
+    const drawStarfield = (
+      c: CanvasRenderingContext2D,
+      W: number,
+      H: number,
+      t: number,
+      dt: number
+    ) => {
       const stars = starsRef.current;
-      const mouse = mouseRef.current;
+      const mouse = smoothMouseRef.current;
       const shootingStars = shootingStarsRef.current;
       const ripples = ripplesRef.current;
+      const dtScale = dt / 0.016;
+      const mouseOnScreen = mouse.x > -1000 && mouse.y > -1000;
 
       // ── Stars with twinkle ──
       for (const s of stars) {
+        // Smooth sinusoidal twinkle using real time
         const twinkle = Math.sin(t * s.twinkleSpeed + s.twinklePhase);
-        // Opacity oscillates around baseOpacity
-        const opacity = s.baseOpacity * (0.5 + 0.5 * twinkle);
+        const opacity = s.baseOpacity * (0.6 + 0.4 * twinkle);
 
-        // Mouse proximity → stars glow brighter
-        const dx = mouse.x - s.x;
-        const dy = mouse.y - s.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const mouseBoost = dist < 150 ? (150 - dist) / 150 : 0;
-        const finalOpacity = Math.min(opacity + mouseBoost * 0.5, 1);
+        // Mouse proximity → smooth cubic falloff
+        let mouseBoost = 0;
+        if (mouseOnScreen) {
+          const dx = mouse.x - s.x;
+          const dy = mouse.y - s.y;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < 40000) {
+            // 200^2 — wider radius, smoother transition
+            const dist = Math.sqrt(distSq);
+            const t = 1 - dist / 200;
+            mouseBoost = t * t * t; // cubic ease — very smooth near edge
+          }
+        }
 
-        // Outer glow
-        if (s.glowRadius > 3 || mouseBoost > 0) {
-          const glowR = s.glowRadius + mouseBoost * 8;
+        const finalOpacity = Math.min(opacity + mouseBoost * 0.45, 1);
+
+        // Outer glow (only for bright stars or mouse-boosted)
+        if (s.glowRadius > 3 || mouseBoost > 0.05) {
+          const glowR = s.glowRadius + mouseBoost * 6;
+          const glowAlpha = finalOpacity * (0.2 + mouseBoost * 0.15);
           const grad = c.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowR);
-          grad.addColorStop(0, `hsla(${s.hue}, 80%, 80%, ${finalOpacity * 0.35})`);
+          grad.addColorStop(
+            0,
+            `hsla(${s.hue}, 80%, 80%, ${glowAlpha})`
+          );
           grad.addColorStop(1, `hsla(${s.hue}, 80%, 80%, 0)`);
           c.beginPath();
           c.arc(s.x, s.y, glowR, 0, Math.PI * 2);
@@ -280,9 +359,9 @@ export default function HeroParticles() {
         c.fill();
 
         // Cross flare on bright stars
-        if (s.radius > 1.2 && finalOpacity > 0.5) {
+        if (s.radius > 1.2 && finalOpacity > 0.55) {
           const flareLen = s.radius * 3 * finalOpacity;
-          c.strokeStyle = `hsla(${s.hue}, 60%, 85%, ${finalOpacity * 0.3})`;
+          c.strokeStyle = `hsla(${s.hue}, 60%, 85%, ${finalOpacity * 0.25})`;
           c.lineWidth = 0.5;
           c.beginPath();
           c.moveTo(s.x - flareLen, s.y);
@@ -294,17 +373,16 @@ export default function HeroParticles() {
       }
 
       // ── Shooting stars ──
-      // Spawn occasionally
-      if (Math.random() < 0.006) {
+      if (Math.random() < 0.006 * dtScale) {
         const startX = Math.random() * W * 0.8;
         const speed = 4 + Math.random() * 4;
-        const angle = (Math.PI / 6) + Math.random() * (Math.PI / 8);
+        const angle = Math.PI / 6 + Math.random() * (Math.PI / 8);
         shootingStars.push({
           x: startX,
           y: -10,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          life: 1,
+          life: 0,
           maxLife: 60 + Math.random() * 40,
           length: 40 + Math.random() * 60,
         });
@@ -312,27 +390,35 @@ export default function HeroParticles() {
 
       for (let i = shootingStars.length - 1; i >= 0; i--) {
         const ss = shootingStars[i];
-        ss.x += ss.vx;
-        ss.y += ss.vy;
-        ss.life++;
+        ss.x += ss.vx * dtScale;
+        ss.y += ss.vy * dtScale;
+        ss.life += dtScale;
 
         const progress = ss.life / ss.maxLife;
-        const alpha = progress < 0.3
-          ? progress / 0.3
-          : 1 - (progress - 0.3) / 0.7;
+        // Smooth fade in / fade out
+        const alpha =
+          progress < 0.2
+            ? progress / 0.2
+            : progress < 0.6
+              ? 1
+              : 1 - (progress - 0.6) / 0.4;
 
         if (alpha <= 0 || ss.x > W + 50 || ss.y > H + 50) {
           shootingStars.splice(i, 1);
           continue;
         }
 
-        // Tail
-        const tailX = ss.x - (ss.vx / Math.sqrt(ss.vx * ss.vx + ss.vy * ss.vy)) * ss.length * alpha;
-        const tailY = ss.y - (ss.vy / Math.sqrt(ss.vx * ss.vx + ss.vy * ss.vy)) * ss.length * alpha;
+        // Tail direction
+        const speed = Math.sqrt(ss.vx * ss.vx + ss.vy * ss.vy);
+        const dirX = ss.vx / speed;
+        const dirY = ss.vy / speed;
+        const tailLen = ss.length * Math.min(alpha, 1);
+        const tailX = ss.x - dirX * tailLen;
+        const tailY = ss.y - dirY * tailLen;
 
         const grad = c.createLinearGradient(tailX, tailY, ss.x, ss.y);
         grad.addColorStop(0, `rgba(180, 210, 255, 0)`);
-        grad.addColorStop(1, `rgba(220, 235, 255, ${alpha * 0.8})`);
+        grad.addColorStop(1, `rgba(220, 235, 255, ${alpha * 0.7})`);
 
         c.beginPath();
         c.moveTo(tailX, tailY);
@@ -343,7 +429,10 @@ export default function HeroParticles() {
 
         // Head glow
         const headGrad = c.createRadialGradient(ss.x, ss.y, 0, ss.x, ss.y, 4);
-        headGrad.addColorStop(0, `rgba(240, 248, 255, ${alpha * 0.9})`);
+        headGrad.addColorStop(
+          0,
+          `rgba(240, 248, 255, ${alpha * 0.8})`
+        );
         headGrad.addColorStop(1, `rgba(200, 220, 255, 0)`);
         c.beginPath();
         c.arc(ss.x, ss.y, 4, 0, Math.PI * 2);
@@ -354,31 +443,42 @@ export default function HeroParticles() {
       // ── Click ripples ──
       for (let i = ripples.length - 1; i >= 0; i--) {
         const r = ripples[i];
-        r.radius += 1.5;
-        r.opacity -= 0.012;
+        r.radius += 1.5 * dtScale;
+        r.opacity -= 0.012 * dtScale;
 
         if (r.opacity <= 0 || r.radius > r.maxRadius) {
           ripples.splice(i, 1);
           continue;
         }
 
-        // Expanding ring
         c.beginPath();
         c.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-        c.strokeStyle = `rgba(180, 210, 255, ${r.opacity * 0.5})`;
+        c.strokeStyle = `rgba(180, 210, 255, ${r.opacity * 0.4})`;
         c.lineWidth = 1;
         c.stroke();
 
-        // Brighten nearby stars
+        // Brighten nearby stars (with smooth falloff)
         for (const s of stars) {
           const dx = s.x - r.x;
           const dy = s.y - r.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          if (Math.abs(dist - r.radius) < 20) {
-            const boost = (1 - Math.abs(dist - r.radius) / 20) * r.opacity;
+          const ringDist = Math.abs(dist - r.radius);
+          if (ringDist < 25) {
+            const proximity = 1 - ringDist / 25;
+            const boost = proximity * proximity * r.opacity; // quadratic falloff
             const glowR = s.radius * 3;
-            const grad = c.createRadialGradient(s.x, s.y, 0, s.x, s.y, glowR);
-            grad.addColorStop(0, `rgba(200, 220, 255, ${boost * 0.6})`);
+            const grad = c.createRadialGradient(
+              s.x,
+              s.y,
+              0,
+              s.x,
+              s.y,
+              glowR
+            );
+            grad.addColorStop(
+              0,
+              `rgba(200, 220, 255, ${boost * 0.5})`
+            );
             grad.addColorStop(1, `rgba(200, 220, 255, 0)`);
             c.beginPath();
             c.arc(s.x, s.y, glowR, 0, Math.PI * 2);
@@ -389,7 +489,7 @@ export default function HeroParticles() {
       }
     };
 
-    animate();
+    animFrameRef.current = requestAnimationFrame(animate);
 
     return () => {
       cancelAnimationFrame(animFrameRef.current);
