@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "name": "前端",
+    "skills": ["Vue.js", "React", "TypeScript", "Next.js", "Electron", "Tailwind CSS"],
+    "order": 0
+  },
+  {
+    "id": "2",
+    "name": "后端",
+    "skills": ["Python", "Django", "Flask", "Node.js", "Redis", "MySQL", "Docker", "Git"],
+    "order": 1
+  },
+  {
+    "id": "3",
+    "name": "工具",
+    "skills": ["Docker", "Git"],
+    "order": 2
+  }
+]

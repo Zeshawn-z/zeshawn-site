@@ -1,0 +1,82 @@
+---
+title: "Next.js App Router 入门指南"
+description: "全面介绍 Next.js App Router 的核心概念，包括路由、布局、数据获取和服务端组件。"
+date: "2026-03-10"
+tags: ["Next.js", "React", "教程"]
+published: true
+---
+
+## 什么是 App Router？
+
+Next.js 13 引入了全新的 App Router，它基于 React Server Components 构建，带来了许多令人兴奋的特性。
+
+### 文件系统路由
+
+App Router 使用文件系统来定义路由。每个文件夹代表一个路由段，文件夹中的 `page.tsx` 文件定义了该路由的页面。
+
+```
+app/
+├── page.tsx          // 首页 /
+├── about/
+│   └── page.tsx      // /about
+├── blog/
+│   ├── page.tsx      // /blog
+│   └── [slug]/
+│       └── page.tsx  // /blog/:slug
+```
+
+### 布局（Layouts）
+
+布局是在多个页面之间共享的 UI。它们保持状态、保持交互性，并且在导航时不会重新渲染。
+
+```tsx
+// app/layout.tsx
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html>
+      <body>
+        <nav>导航栏</nav>
+        {children}
+        <footer>页脚</footer>
+      </body>
+    </html>
+  );
+}
+```
+
+### 服务端组件 vs 客户端组件
+
+默认情况下，App Router 中的所有组件都是**服务端组件**。如果需要使用客户端特性（如 `useState`、`useEffect`），需要在文件顶部添加 `"use client"` 指令。
+
+| 特性 | 服务端组件 | 客户端组件 |
+|------|----------|----------|
+| 数据获取 | ✅ 直接获取 | 需要 API |
+| 访问后端 | ✅ 直接访问 | ❌ |
+| 交互性 | ❌ | ✅ |
+| 状态管理 | ❌ | ✅ |
+
+### 数据获取
+
+在服务端组件中，可以直接使用 `async/await` 获取数据：
+
+```tsx
+async function getData() {
+  const res = await fetch('https://api.example.com/data');
+  return res.json();
+}
+
+export default async function Page() {
+  const data = await getData();
+  return <div>{data.title}</div>;
+}
+```
+
+## 总结
+
+App Router 代表了 Next.js 的未来方向，它提供了更好的性能、更灵活的路由系统和更简洁的数据获取方式。建议新项目优先使用 App Router。
+
+如果你有任何问题，欢迎在评论区留言讨论！
