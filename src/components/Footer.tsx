@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { Github, Twitter, Mail } from "lucide-react";
 import { siteConfig } from "@/lib/site-config";
 
@@ -11,11 +10,6 @@ const iconMap: Record<string, React.ComponentType<{ size?: number }>> = {
 };
 
 export default function Footer() {
-  const pathname = usePathname();
-
-  // 管理后台页面不展示前台页脚
-  if (pathname.startsWith("/admin")) return null;
-
   const socialEntries = Object.entries(siteConfig.social).filter(
     ([, url]) => url
   );

@@ -15,9 +15,8 @@ import {
   ChevronDown,
   ChevronUp,
   GripVertical,
-  ArrowLeft,
+  Shield,
 } from "lucide-react";
-import Link from "next/link";
 import type { Project, Experience, SkillGroup } from "@/lib/types";
 
 type Tab = "projects" | "experiences" | "skills";
@@ -100,36 +99,31 @@ export default function AdminDashboard() {
 
   if (authed === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center">
         <Loader2 size={24} className="animate-spin text-muted" />
       </div>
     );
   }
 
   const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: "projects", label: "项目管理", icon: <FolderKanban size={16} /> },
-    { key: "experiences", label: "经历管理", icon: <Briefcase size={16} /> },
-    { key: "skills", label: "技能管理", icon: <Wrench size={16} /> },
+    { key: "projects", label: "项目", icon: <FolderKanban size={15} /> },
+    { key: "experiences", label: "经历", icon: <Briefcase size={15} /> },
+    { key: "skills", label: "技能", icon: <Wrench size={15} /> },
   ];
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/"
-            className="rounded-md p-1.5 text-muted transition-colors hover:text-foreground"
-          >
-            <ArrowLeft size={20} />
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight">管理后台</h1>
+    <div className="mx-auto max-w-5xl px-6 lg:px-8">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between border-b border-border py-6">
+        <div className="flex items-center gap-2.5">
+          <Shield size={18} className="text-accent" />
+          <h1 className="text-xl font-bold tracking-tight">内容管理</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -138,11 +132,11 @@ export default function AdminDashboard() {
             ) : (
               <Save size={14} />
             )}
-            {saving ? "保存中..." : saved ? "已保存" : "保存全部"}
+            {saving ? "保存中" : saved ? "已保存" : "保存"}
           </button>
           <button
             onClick={handleLogout}
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:bg-card"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3.5 py-2 text-sm text-muted transition-colors hover:text-foreground hover:bg-card"
           >
             <LogOut size={14} />
             退出
@@ -151,12 +145,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-1 rounded-lg border border-border bg-card p-1">
+      <div className="mt-6 mb-6 flex gap-1 rounded-lg border border-border bg-card p-1">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
               tab === t.key
                 ? "bg-accent text-white"
                 : "text-muted hover:text-foreground"
@@ -169,18 +163,20 @@ export default function AdminDashboard() {
       </div>
 
       {/* Content */}
-      {tab === "projects" && (
-        <ProjectsEditor projects={projects} onChange={setProjects} />
-      )}
-      {tab === "experiences" && (
-        <ExperiencesEditor
-          experiences={experiences}
-          onChange={setExperiences}
-        />
-      )}
-      {tab === "skills" && (
-        <SkillsEditor skills={skills} onChange={setSkills} />
-      )}
+      <div className="pb-12">
+        {tab === "projects" && (
+          <ProjectsEditor projects={projects} onChange={setProjects} />
+        )}
+        {tab === "experiences" && (
+          <ExperiencesEditor
+            experiences={experiences}
+            onChange={setExperiences}
+          />
+        )}
+        {tab === "skills" && (
+          <SkillsEditor skills={skills} onChange={setSkills} />
+        )}
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Menu, X, Terminal } from "lucide-react";
 import { siteConfig } from "@/lib/site-config";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -11,13 +11,48 @@ export default function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // 管理后台页面不展示前台导航
-  if (pathname.startsWith("/admin")) return null;
+  const navRef = useRef<HTMLElement>(null);
+  const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const [indicator, setIndicator] = useState({
+    left: 0,
+    width: 0,
+    ready: false,
+  });
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
   };
+
+  const activeIndex = siteConfig.nav.findIndex((link) => isActive(link.href));
+
+  const updateIndicator = useCallback(() => {
+    const nav = navRef.current;
+    const activeLink = linkRefs.current[activeIndex];
+    if (!nav || !activeLink || activeIndex < 0) {
+      setIndicator((prev) => ({ ...prev, ready: false }));
+      return;
+    }
+
+    const navRect = nav.getBoundingClientRect();
+    const linkRect = activeLink.getBoundingClientRect();
+
+    setIndicator({
+      left: linkRect.left - navRect.left,
+      width: linkRect.width,
+      ready: true,
+    });
+  }, [activeIndex]);
+
+  useEffect(() => {
+    updateIndicator();
+    const timer = setTimeout(updateIndicator, 50);
+    window.addEventListener("resize", updateIndicator);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", updateIndicator);
+    };
+  }, [updateIndicator]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
@@ -32,22 +67,37 @@ export default function Header() {
 
         {/* Desktop Nav */}
         <div className="hidden items-center gap-1 sm:flex">
-          <nav className="flex items-center gap-1">
-            {siteConfig.nav.map((link) => (
+          <nav ref={navRef} className="relative flex items-center">
+            {siteConfig.nav.map((link, i) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+                ref={(el) => {
+                  linkRefs.current[i] = el;
+                }}
+                className={`relative z-10 px-3 py-1.5 text-sm font-medium transition-colors duration-200 ${
                   isActive(link.href)
-                    ? "bg-accent/10 font-medium text-accent"
+                    ? "text-accent"
                     : "text-muted hover:text-foreground"
                 }`}
               >
                 {link.label}
               </Link>
             ))}
+
+            {/* Sliding indicator — sits at the very bottom edge of header */}
+            <div
+              className="absolute h-0.5 rounded-full bg-accent transition-all duration-300 ease-out"
+              style={{
+                bottom: -13,
+                left: indicator.left,
+                width: indicator.width,
+                opacity: indicator.ready ? 1 : 0,
+              }}
+            />
           </nav>
-          <div className="ml-2 border-l border-border pl-2">
+
+          <div className="ml-3 border-l border-border pl-3">
             <ThemeToggle />
           </div>
         </div>
@@ -76,11 +126,16 @@ export default function Header() {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`rounded-md px-3 py-2 text-sm transition-colors ${
                   isActive(link.href)
-                    ? "bg-accent/10 font-medium text-accent"
+                    ? "font-medium text-accent"
                     : "text-muted hover:text-foreground"
                 }`}
               >
-                {link.label}
+                <span className="flex items-center gap-2">
+                  {isActive(link.href) && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                  )}
+                  {link.label}
+                </span>
               </Link>
             ))}
           </div>
