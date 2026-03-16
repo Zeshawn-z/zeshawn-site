@@ -1,0 +1,56 @@
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+
+export const projects = sqliteTable("projects", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull().default(""),
+  description: text("description").notNull().default(""),
+  tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
+  link: text("link"),
+  github: text("github"),
+  image: text("image"),
+  featured: integer("featured", { mode: "boolean" }).notNull().default(false),
+  order: integer("order").notNull().default(999),
+});
+
+export const experiences = sqliteTable("experiences", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull().default(""),
+  company: text("company").notNull().default(""),
+  period: text("period").notNull().default(""),
+  description: text("description").notNull().default(""),
+  tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
+  order: integer("order").notNull().default(999),
+});
+
+export const skillGroups = sqliteTable("skill_groups", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull().default(""),
+  skills: text("skills", { mode: "json" }).notNull().$type<string[]>().default([]),
+  order: integer("order").notNull().default(999),
+});
+
+export const posts = sqliteTable("posts", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull().default(""),
+  description: text("description").notNull().default(""),
+  content: text("content").notNull().default(""),
+  date: text("date").notNull().default(""),
+  tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
+  published: integer("published", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const guestbook = sqliteTable("guestbook", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  nickname: text("nickname").notNull(),
+  message: text("message").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const siteConfig = sqliteTable("site_config", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull().default(""),
+});

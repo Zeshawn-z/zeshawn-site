@@ -4,10 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Menu, X, Terminal } from "lucide-react";
-import { siteConfig } from "@/lib/site-config";
+import { useSiteConfig } from "@/components/SiteConfigProvider";
 import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Header() {
+  const siteConfig = useSiteConfig();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

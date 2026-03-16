@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen, PenLine, Calendar, Clock } from "lucide-react";
-import { getAllPosts } from "@/lib/blog";
+import { getAllPosts } from "@/lib/data";
 import ScrollReveal from "@/components/ScrollReveal";
 import GlowCard from "@/components/GlowCard";
 import SpotlightSection from "@/components/SpotlightSection";
@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   title: "博客",
   description: "技术博客与文章",
 };
+
+export const dynamic = "force-dynamic";
 
 export default function BlogPage() {
   const posts = getAllPosts();
@@ -73,19 +75,7 @@ export default function BlogPage() {
               <BookOpen size={28} className="mx-auto mb-3 text-muted" />
               <p className="text-muted">暂无博客文章</p>
               <p className="mt-2 text-sm text-muted">
-                在{" "}
-                <code className="rounded bg-card px-1.5 py-0.5 font-mono text-xs">
-                  content/blog/
-                </code>{" "}
-                目录下创建{" "}
-                <code className="rounded bg-card px-1.5 py-0.5 font-mono text-xs">
-                  .md
-                </code>{" "}
-                或{" "}
-                <code className="rounded bg-card px-1.5 py-0.5 font-mono text-xs">
-                  .mdx
-                </code>{" "}
-                文件即可发布文章。
+                在管理后台发布你的第一篇文章吧。
               </p>
             </div>
           )}
