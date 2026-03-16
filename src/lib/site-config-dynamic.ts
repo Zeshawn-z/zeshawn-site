@@ -6,7 +6,7 @@ const NAV = [
   { href: "/", label: "首页" },
   { href: "/projects", label: "项目" },
   { href: "/blog", label: "博客" },
-  { href: "/guestbook", label: "留言板" },
+  { href: "/guestbook", label: "留言" },
   { href: "/about", label: "关于" },
 ];
 
