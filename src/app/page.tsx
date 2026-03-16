@@ -8,9 +8,8 @@ import {
   Calendar,
   Clock,
 } from "lucide-react";
-import { siteConfig } from "@/lib/site-config";
-import { getProjects } from "@/lib/data";
-import { getAllPosts } from "@/lib/blog";
+import { getDynamicSiteConfig } from "@/lib/site-config-dynamic";
+import { getProjects, getAllPosts } from "@/lib/data";
 import HeroParticles from "@/components/HeroParticles";
 import TypeWriter from "@/components/TypeWriter";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -18,7 +17,10 @@ import GlowCard from "@/components/GlowCard";
 import MagneticButton from "@/components/MagneticButton";
 import SpotlightSection from "@/components/SpotlightSection";
 
+export const dynamic = "force-dynamic";
+
 export default function Home() {
+  const siteConfig = getDynamicSiteConfig();
   const projects = getProjects();
   const featuredProjects = projects.filter((p) => p.featured).slice(0, 3);
   const recentPosts = getAllPosts().slice(0, 3);

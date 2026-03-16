@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Mail, User, Briefcase, Wrench, MapPin } from "lucide-react";
-import { siteConfig } from "@/lib/site-config";
+import { getDynamicSiteConfig } from "@/lib/site-config-dynamic";
 import { getExperiences, getSkills } from "@/lib/data";
 import ScrollReveal from "@/components/ScrollReveal";
+import SpotlightSection from "@/components/SpotlightSection";
+import GlowTag from "@/components/GlowTag";
 
 export const metadata: Metadata = {
   title: "关于",
@@ -12,7 +14,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default function AboutPage() {
-  const { author } = siteConfig;
+  const { author } = getDynamicSiteConfig();
   const experiences = getExperiences();
   const skills = getSkills();
 
@@ -47,33 +49,30 @@ export default function AboutPage() {
       </section>
 
       {/* Skills */}
-      <ScrollReveal>
-        <section className="border-t border-border py-12">
-          <div className="flex items-center gap-2">
-            <Wrench size={18} className="text-accent" />
-            <h2 className="text-xl font-semibold tracking-tight">技术栈</h2>
-          </div>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2">
-            {skills.map((group) => (
-              <div key={group.id}>
-                <h3 className="mb-3 text-sm font-medium text-muted">
-                  {group.name}
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {group.skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="rounded-full border border-border px-3 py-1 text-sm transition-colors hover:border-accent/50 hover:text-accent"
-                    >
-                      {skill}
-                    </span>
-                  ))}
+      <SpotlightSection>
+        <ScrollReveal>
+          <section className="border-t border-border py-12">
+            <div className="flex items-center gap-2">
+              <Wrench size={18} className="text-accent" />
+              <h2 className="text-xl font-semibold tracking-tight">技术栈</h2>
+            </div>
+            <div className="mt-6 grid gap-6 sm:grid-cols-2">
+              {skills.map((group) => (
+                <div key={group.id}>
+                  <h3 className="mb-3 text-sm font-medium text-muted">
+                    {group.name}
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {group.skills.map((skill) => (
+                      <GlowTag key={skill}>{skill}</GlowTag>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </ScrollReveal>
+              ))}
+            </div>
+          </section>
+        </ScrollReveal>
+      </SpotlightSection>
 
       {/* Experience */}
       <ScrollReveal>
