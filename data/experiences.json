@@ -1,29 +1,29 @@
 [
   {
     "id": "1",
-    "title": "高级前端工程师",
-    "company": "某科技公司",
-    "period": "2024 - 至今",
-    "description": "负责核心产品的前端架构设计与开发，主导技术选型和团队代码规范制定。使用 React/Next.js 构建高性能 Web 应用。",
-    "tags": ["React", "Next.js", "TypeScript"],
+    "title": "Frontend Engineer",
+    "company": "Example Technology Co.",
+    "period": "2025-01 - Present",
+    "description": "Built and maintained product features using React and TypeScript, with focus on performance and component reusability.",
+    "tags": ["React", "TypeScript", "Performance"],
     "order": 0
   },
   {
     "id": "2",
-    "title": "前端工程师",
-    "company": "某互联网公司",
-    "period": "2022 - 2024",
-    "description": "参与多个项目的前端开发工作，优化页面性能和用户体验。与设计师和后端工程师紧密协作，交付高质量产品。",
-    "tags": ["Vue.js", "Node.js", "CSS"],
+    "title": "Software Engineering Intern",
+    "company": "Startup Studio",
+    "period": "2024-06 - 2024-12",
+    "description": "Implemented internal tools, integrated APIs, and collaborated with design and backend teams to deliver production features.",
+    "tags": ["Next.js", "API", "Collaboration"],
     "order": 1
   },
   {
     "id": "3",
-    "title": "计算机科学学士",
-    "company": "某大学",
-    "period": "2018 - 2022",
-    "description": "主修计算机科学与技术，学习了数据结构、算法、操作系统等核心课程。参与多个校内项目和竞赛。",
-    "tags": [],
+    "title": "B.S. in Computer Science",
+    "company": "Example University",
+    "period": "2020-09 - 2024-06",
+    "description": "Studied core CS subjects including algorithms, operating systems, networks, and databases.",
+    "tags": ["Education", "Computer Science"],
     "order": 2
   }
 ]

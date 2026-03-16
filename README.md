@@ -1,36 +1,122 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# zeshawn-site
 
-## Getting Started
+基于 Next.js App Router 的个人站点模板，包含：
 
-First, run the development server:
+- 首页/关于/项目/博客/留言板
+- 管理后台（登录后可管理数据）
+- SQLite 本地数据存储
+- MDX 博客内容支持
+- Standalone 构建与服务器部署脚本
+
+## 1. 环境要求
+
+- Node.js 20+
+- npm 10+
+- （可选，Windows 部署推荐）WSL2 + Ubuntu
+- 远程服务器可通过 SSH 访问
+
+## 2. 快速开始
+
+```bash
+npm ci
+```
+
+首次使用建议执行一次数据迁移（将 `data/*.json`、`content/blog/*`、默认站点配置导入 SQLite）：
+
+```bash
+npm run migrate
+```
+
+启动开发环境：
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+访问：`http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 3. 常用命令
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev      # 开发模式
+npm run build    # 生产构建
+npm run start    # 生产启动
+npm run migrate  # 一次性迁移脚本
+```
 
-## Learn More
+## 4. 配置说明
 
-To learn more about Next.js, take a look at the following resources:
+### 4.1 管理后台鉴权
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+后台登录逻辑位于 `src/lib/auth.ts`，建议通过环境变量配置：
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD_HASH`（bcrypt hash）
+- `JWT_SECRET`
 
-## Deploy on Vercel
+未配置时会使用默认值，仅适合本地开发。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4.2 站点配置
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`src/lib/site-config.ts` 是公开仓库中的默认模板配置，不包含真实个人信息。
+
+真实内容建议通过后台写入数据库，不直接写入仓库。
+
+## 5. 数据与隐私
+
+本项目默认只忽略数据库与私有备份目录，`data/*.json` 作为样板数据可提交到 Git：
+
+- `data/*.db`
+- `data/*.db-shm`
+- `data/*.db-wal`
+- `data-private/`
+
+如需团队共享演示数据，请单独维护脱敏样例文件。
+
+## 6. 部署（Windows + WSL + SSH）
+
+部署入口脚本：`scripts/deploy-standalone.bat`
+
+它会执行以下流程：
+
+1. 在 WSL 中使用 Linux Node 构建并打包
+2. 上传 `next-standalone.tar.gz` 到服务器
+3. 服务器解压到 `/var/www/zeshawn-site`
+4. 重启 `zeshawn-next` systemd 服务
+
+直接运行：
+
+```bat
+./scripts/deploy-standalone.bat
+```
+
+### 部署前请确认
+
+- 本机 SSH Host 已配置 `ali`
+- 服务器目录为 `/var/www/zeshawn-site`
+- 服务器已有 `zeshawn-next` systemd 服务
+- WSL 用户与 bat 脚本中的 `WSL_USER` 一致（默认是 `zeshawn`）
+
+如需修改部署目标，可编辑：`scripts/deploy-standalone.bat`。
+
+## 7. 目录结构（关键部分）
+
+```text
+src/
+	app/                  # 页面与 API 路由
+	components/           # 组件
+	lib/                  # 数据访问、鉴权、配置
+scripts/
+	migrate.ts            # 数据迁移脚本
+	deploy-build-wsl.sh   # WSL 构建脚本
+	deploy-standalone.bat # 部署入口
+content/blog/           # MDX 博客内容
+data/                   # 样板数据与本地数据库
+data-private/           # 私有数据备份（默认忽略）
+```
+
+## 8. 注意事项
+
+- `npm run migrate` 主要用于初始化，不建议在生产反复执行。
+- 如果你改了数据库结构，请同步调整 `scripts/migrate.ts` 与 `src/lib/schema.ts`。
+- 部署失败时，优先检查：WSL Node 路径、SSH 可达性、服务器 systemd 日志。

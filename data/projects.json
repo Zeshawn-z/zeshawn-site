@@ -1,39 +1,29 @@
 [
   {
     "id": "1",
-    "title": "个人网站",
-    "description": "基于 Next.js 构建的个人网站，包含博客系统、项目展示和个人经历。采用 Tailwind CSS 实现响应式设计，支持暗色模式。",
+    "title": "Portfolio Website",
+    "description": "A personal site built with Next.js, including blog pages, project showcase, and an admin panel for content management.",
     "tags": ["Next.js", "TypeScript", "Tailwind CSS"],
-    "github": "https://github.com/zeshawn/zeshawn-site",
+    "github": "https://github.com/your-name/portfolio-site",
     "featured": true,
     "order": 0
   },
   {
     "id": "2",
-    "title": "项目二",
-    "description": "这是一个示例项目描述。你可以在管理后台中修改这些数据，添加你自己的项目信息。",
-    "tags": ["React", "Node.js", "PostgreSQL"],
-    "link": "https://example.com",
-    "github": "https://github.com/zeshawn/project-2",
+    "title": "Realtime Dashboard",
+    "description": "A realtime analytics dashboard with websocket updates, reusable chart components, and responsive layout.",
+    "tags": ["React", "Node.js", "WebSocket"],
+    "link": "https://example.com/dashboard",
     "featured": true,
     "order": 1
   },
   {
     "id": "3",
-    "title": "项目三",
-    "description": "另一个示例项目。支持添加项目链接、GitHub 仓库链接、技术标签等信息。",
-    "tags": ["Python", "FastAPI", "Docker"],
-    "github": "https://github.com/zeshawn/project-3",
+    "title": "Service API",
+    "description": "A RESTful backend service with auth, role control, and CI workflow.",
+    "tags": ["Python", "FastAPI", "SQLite"],
+    "github": "https://github.com/your-name/service-api",
     "featured": false,
     "order": 2
-  },
-  {
-    "id": "4",
-    "title": "项目四",
-    "description": "更多的项目示例。你可以根据需要添加任意数量的项目。",
-    "tags": ["Vue.js", "GraphQL", "AWS"],
-    "link": "https://example.com",
-    "featured": false,
-    "order": 3
   }
 ]

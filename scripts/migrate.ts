@@ -311,9 +311,12 @@ async function migrateSiteConfig(db: ReturnType<typeof initDb>) {
   }
 
   // tsx 支持直接 import .ts 文件
+  // 在 Windows 上，import() 绝对路径需要 file:// 前缀
   let siteConfig: Record<string, unknown>;
   try {
-    const mod = await import(configPath);
+    const { pathToFileURL } = await import("url");
+    const importUrl = pathToFileURL(configPath).href;
+    const mod = await import(importUrl);
     siteConfig = mod.siteConfig;
     if (!siteConfig) {
       console.log("  ⚠ site-config.ts 中未找到 siteConfig 导出，跳过");
