@@ -46,5 +46,4 @@ data/*.db-wal
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-test1
+test
