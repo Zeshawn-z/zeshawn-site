@@ -1,0 +1,89 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate version number
+        id: version
+        run: |
+          # 日期版本号: v2026.03.17.<run_number>
+          VERSION="v$(date -u +%Y.%m.%d).${{ github.run_number }}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Generated version: $VERSION"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (standalone)
+        run: npm run build
+
+      # standalone 产物在 .next/standalone，静态资源在 .next/static，公共资源在 public
+      - name: Assemble standalone package
+        run: |
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+
+      - name: Create tar archive
+        run: tar -czf zeshawn-site.tar.gz -C .next/standalone .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zeshawn-site
+          path: zeshawn-site.tar.gz
+          retention-days: 30
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # 获取上一个 tag，如果没有则取第一个 commit
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          echo "Changes since $PREV_TAG:"
+          CHANGELOG=$(git log "$PREV_TAG"..HEAD --pretty=format:"- %s (%h)" --no-merges 2>/dev/null || echo "- Initial release")
+          # 多行输出写入 GITHUB_OUTPUT
+          {
+            echo "changelog<<EOF"
+            echo "$CHANGELOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          body: |
+            ## 🚀 自动构建发布
+
+            **版本**: `${{ steps.version.outputs.version }}`
+            **构建时间**: ${{ github.event.head_commit.timestamp }}
+            **触发提交**: ${{ github.event.head_commit.message }}
+
+            ### 📋 更新日志
+            ${{ steps.changelog.outputs.changelog }}
+
+            ### 📦 产物说明
+            - `zeshawn-site.tar.gz` — Next.js standalone 构建产物
+            - 解压后 `node server.js` 即可运行
+          files: zeshawn-site.tar.gz
+          generate_release_notes: false

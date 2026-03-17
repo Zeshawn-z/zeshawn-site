@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
 import { getPostBySlug, getAllPosts } from "@/lib/data";
-import { remark } from "remark";
-import html from "remark-html";
+import { renderMarkdown } from "@/lib/markdown";
+import CopyCodeButton from "@/components/CopyCodeButton";
+import BlogComments from "@/components/BlogComments";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +31,7 @@ export default async function BlogPostPage({ params }: Props) {
     notFound();
   }
 
-  const processedContent = await remark().use(html).process(post.content);
-  const contentHtml = processedContent.toString();
+  const contentHtml = await renderMarkdown(post.content);
 
   return (
     <div className="mx-auto max-w-5xl px-6 lg:px-8">
@@ -81,13 +81,18 @@ export default async function BlogPostPage({ params }: Props) {
 
         {/* Content */}
         <div
-          className="prose"
+          className="markdown-body"
           dangerouslySetInnerHTML={{ __html: contentHtml }}
         />
+        <CopyCodeButton />
 
         {/* Footer divider */}
         <hr className="mt-12 border-border" />
-        <div className="mt-6">
+
+        {/* 评论区 */}
+        <BlogComments slug={slug} />
+
+        <div className="mt-8">
           <Link
             href="/blog"
             className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground"

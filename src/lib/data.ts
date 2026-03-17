@@ -212,6 +212,11 @@ export function updatePost(
 
 export function deletePost(id: string) {
   const db = getDb();
+  // 先查出 slug 用于级联删除评论
+  const post = db.select({ slug: schema.posts.slug }).from(schema.posts).where(eq(schema.posts.id, id)).get();
+  if (post) {
+    deleteCommentsBySlug(post.slug);
+  }
   db.delete(schema.posts).where(eq(schema.posts.id, id)).run();
 }
 
@@ -237,6 +242,198 @@ function rowToPostFull(r: typeof schema.posts.$inferSelect): PostFull {
     content: r.content,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
+  };
+}
+
+// ─── Comments ─────────────────────────────────────────────────
+
+export interface Comment {
+  id: number;
+  postSlug: string;
+  parentId: number | null;
+  floor: number | null;
+  nickname: string;
+  content: string;
+  createdAt: string;
+  replies?: Comment[];       // 前端组装
+}
+
+/**
+ * 获取某篇文章的主评论（带分页、排序），并附带所有回复
+ */
+export function getCommentsBySlug(
+  postSlug: string,
+  opts: { page?: number; limit?: number; order?: "asc" | "desc" } = {}
+): { comments: Comment[]; total: number; page: number; pages: number } {
+  const db = getDb();
+  const page = Math.max(1, opts.page ?? 1);
+  const limit = opts.limit ?? 10;
+  const offset = (page - 1) * limit;
+  const orderDir = opts.order === "desc" ? desc : asc;
+
+  // 只查主评论数量（不含回复）
+  const totalResult = db
+    .select({ value: count() })
+    .from(schema.comments)
+    .where(and(eq(schema.comments.postSlug, postSlug), sql`${schema.comments.parentId} IS NULL`))
+    .get();
+  const total = totalResult?.value ?? 0;
+
+  // 主评论（分页）
+  const mainRows = db
+    .select()
+    .from(schema.comments)
+    .where(and(eq(schema.comments.postSlug, postSlug), sql`${schema.comments.parentId} IS NULL`))
+    .orderBy(orderDir(schema.comments.createdAt))
+    .limit(limit)
+    .offset(offset)
+    .all();
+
+  const mainComments = mainRows.map(rowToComment);
+
+  // 批量获取这些主评论的所有回复
+  if (mainComments.length > 0) {
+    const mainIds = mainComments.map((c) => c.id);
+    const replyRows = db
+      .select()
+      .from(schema.comments)
+      .where(sql`${schema.comments.parentId} IN (${sql.join(mainIds.map((id) => sql`${id}`), sql`, `)})`)
+      .orderBy(asc(schema.comments.createdAt))
+      .all();
+
+    const repliesByParent = new Map<number, Comment[]>();
+    for (const r of replyRows) {
+      const comment = rowToComment(r);
+      const arr = repliesByParent.get(comment.parentId!) || [];
+      arr.push(comment);
+      repliesByParent.set(comment.parentId!, arr);
+    }
+
+    for (const c of mainComments) {
+      c.replies = repliesByParent.get(c.id) || [];
+    }
+  }
+
+  return { comments: mainComments, total, page, pages: Math.ceil(total / limit) };
+}
+
+/**
+ * 获取主评论数（不含回复）
+ */
+export function getCommentCount(postSlug: string): number {
+  const db = getDb();
+  const result = db
+    .select({ value: count() })
+    .from(schema.comments)
+    .where(and(eq(schema.comments.postSlug, postSlug), sql`${schema.comments.parentId} IS NULL`))
+    .get();
+  return result?.value ?? 0;
+}
+
+/**
+ * 管理后台：获取所有评论（含回复），支持 slug 筛选
+ */
+export function getAllComments(opts: { limit?: number; offset?: number; slug?: string } = {}): Comment[] {
+  const db = getDb();
+  const limit = opts.limit ?? 500;
+  const offset = opts.offset ?? 0;
+
+  if (opts.slug) {
+    return db
+      .select()
+      .from(schema.comments)
+      .where(eq(schema.comments.postSlug, opts.slug))
+      .orderBy(desc(schema.comments.createdAt))
+      .limit(limit)
+      .offset(offset)
+      .all()
+      .map(rowToComment);
+  }
+
+  return db
+    .select()
+    .from(schema.comments)
+    .orderBy(desc(schema.comments.createdAt))
+    .limit(limit)
+    .offset(offset)
+    .all()
+    .map(rowToComment);
+}
+
+export function getAllCommentsCount(slug?: string): number {
+  const db = getDb();
+  if (slug) {
+    const result = db
+      .select({ value: count() })
+      .from(schema.comments)
+      .where(eq(schema.comments.postSlug, slug))
+      .get();
+    return result?.value ?? 0;
+  }
+  const result = db.select({ value: count() }).from(schema.comments).get();
+  return result?.value ?? 0;
+}
+
+/**
+ * 发表主评论：自动计算楼数
+ */
+export function addComment(postSlug: string, nickname: string, content: string, parentId?: number): Comment {
+  const db = getDb();
+
+  let floor: number | null = null;
+  if (!parentId) {
+    // 主评论：计算当前最大楼数 + 1
+    const maxFloor = db
+      .select({ value: sql<number>`MAX(floor)` })
+      .from(schema.comments)
+      .where(and(eq(schema.comments.postSlug, postSlug), sql`${schema.comments.parentId} IS NULL`))
+      .get();
+    floor = (maxFloor?.value ?? 0) + 1;
+  }
+
+  const result = db
+    .insert(schema.comments)
+    .values({
+      postSlug,
+      parentId: parentId ?? null,
+      floor,
+      nickname,
+      content,
+    })
+    .run();
+
+  const row = db
+    .select()
+    .from(schema.comments)
+    .where(eq(schema.comments.id, Number(result.lastInsertRowid)))
+    .get();
+  return rowToComment(row!);
+}
+
+export function deleteComment(id: number) {
+  const db = getDb();
+  // 同时删除该评论的所有回复
+  db.delete(schema.comments).where(eq(schema.comments.parentId, id)).run();
+  db.delete(schema.comments).where(eq(schema.comments.id, id)).run();
+}
+
+/**
+ * 级联删除：删除某篇文章的所有评论（含回复）
+ */
+export function deleteCommentsBySlug(postSlug: string) {
+  const db = getDb();
+  db.delete(schema.comments).where(eq(schema.comments.postSlug, postSlug)).run();
+}
+
+function rowToComment(r: typeof schema.comments.$inferSelect): Comment {
+  return {
+    id: r.id,
+    postSlug: r.postSlug,
+    parentId: r.parentId,
+    floor: r.floor,
+    nickname: r.nickname,
+    content: r.content,
+    createdAt: r.createdAt,
   };
 }
 
