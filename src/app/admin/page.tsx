@@ -22,10 +22,12 @@ import {
   Eye,
   EyeOff,
   Edit3,
+  MessageCircle,
 } from "lucide-react";
 import type { Project, Experience, SkillGroup } from "@/lib/types";
+import MdEditor from "@/components/MdEditor";
 
-type Tab = "posts" | "projects" | "experiences" | "skills" | "guestbook" | "config";
+type Tab = "posts" | "projects" | "experiences" | "skills" | "comments" | "guestbook" | "config";
 
 interface PostAdmin {
   id: string;
@@ -47,6 +49,16 @@ interface GuestbookEntry {
   createdAt: string;
 }
 
+interface CommentAdmin {
+  id: number;
+  postSlug: string;
+  parentId: number | null;
+  floor: number | null;
+  nickname: string;
+  content: string;
+  createdAt: string;
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -60,6 +72,8 @@ export default function AdminDashboard() {
   const [skills, setSkills] = useState<SkillGroup[]>([]);
   const [posts, setPosts] = useState<PostAdmin[]>([]);
   const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>([]);
+  const [commentsData, setCommentsData] = useState<CommentAdmin[]>([]);
+  const [commentFilterSlug, setCommentFilterSlug] = useState<string>("");
   const [siteConfigData, setSiteConfigData] = useState<Record<string, string>>({});
 
   // Auth check
@@ -75,12 +89,13 @@ export default function AdminDashboard() {
 
   // Load data
   const loadData = useCallback(async () => {
-    const [p, e, s, posts, gb, cfg] = await Promise.all([
+    const [p, e, s, posts, gb, cm, cfg] = await Promise.all([
       fetch("/api/admin/projects").then((r) => r.json()),
       fetch("/api/admin/experiences").then((r) => r.json()),
       fetch("/api/admin/skills").then((r) => r.json()),
       fetch("/api/admin/posts").then((r) => r.json()),
       fetch("/api/guestbook").then((r) => r.json()),
+      fetch("/api/admin/comments").then((r) => r.json()),
       fetch("/api/admin/config").then((r) => r.json()),
     ]);
     setProjects(p);
@@ -88,6 +103,7 @@ export default function AdminDashboard() {
     setSkills(s);
     setPosts(posts);
     setGuestbookEntries(gb.entries || []);
+    setCommentsData(cm || []);
     setSiteConfigData(cfg);
   }, []);
 
@@ -147,6 +163,7 @@ export default function AdminDashboard() {
     { key: "projects", label: "项目", icon: <FolderKanban size={15} /> },
     { key: "experiences", label: "经历", icon: <Briefcase size={15} /> },
     { key: "skills", label: "技能", icon: <Wrench size={15} /> },
+    { key: "comments", label: "评论", icon: <MessageCircle size={15} /> },
     { key: "guestbook", label: "留言", icon: <MessageSquare size={15} /> },
     { key: "config", label: "设置", icon: <Settings size={15} /> },
   ];
@@ -196,10 +213,11 @@ export default function AdminDashboard() {
 
       {/* Content */}
       <div className="pb-12">
-        {tab === "posts" && <PostsEditor posts={posts} setPosts={setPosts} />}
+        {tab === "posts" && <PostsEditor posts={posts} setPosts={setPosts} onViewComments={(slug) => { setCommentFilterSlug(slug); setTab("comments"); }} />}
         {tab === "projects" && <ProjectsEditor projects={projects} onChange={setProjects} />}
         {tab === "experiences" && <ExperiencesEditor experiences={experiences} onChange={setExperiences} />}
         {tab === "skills" && <SkillsEditor skills={skills} onChange={setSkills} />}
+        {tab === "comments" && <CommentsManager comments={commentsData} setComments={setCommentsData} filterSlug={commentFilterSlug} setFilterSlug={setCommentFilterSlug} />}
         {tab === "guestbook" && <GuestbookManager entries={guestbookEntries} setEntries={setGuestbookEntries} />}
         {tab === "config" && <ConfigEditor config={siteConfigData} onChange={setSiteConfigData} />}
       </div>
@@ -208,7 +226,7 @@ export default function AdminDashboard() {
 }
 
 // ─── Posts Editor ─────────────────────────────────────────────
-function PostsEditor({ posts, setPosts }: { posts: PostAdmin[]; setPosts: (p: PostAdmin[]) => void }) {
+function PostsEditor({ posts, setPosts, onViewComments }: { posts: PostAdmin[]; setPosts: (p: PostAdmin[]) => void; onViewComments: (slug: string) => void }) {
   const [editing, setEditing] = useState<PostAdmin | null>(null);
   const [savingPost, setSavingPost] = useState(false);
 
@@ -319,12 +337,10 @@ function PostsEditor({ posts, setPosts }: { posts: PostAdmin[]; setPosts: (p: Po
         {/* Markdown Editor */}
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted">内容（Markdown）</label>
-          <textarea
+          <MdEditor
             value={editing.content}
-            onChange={(e) => setEditing({ ...editing, content: e.target.value })}
-            rows={20}
-            className="w-full resize-y rounded-lg border border-border bg-background px-4 py-3 font-mono text-sm leading-relaxed outline-none transition-colors focus:border-accent"
-            placeholder="在这里写你的文章内容，支持 Markdown 语法..."
+            onChange={(v) => setEditing({ ...editing, content: v })}
+            height={600}
           />
         </div>
       </div>
@@ -349,6 +365,9 @@ function PostsEditor({ posts, setPosts }: { posts: PostAdmin[]; setPosts: (p: Po
             <button onClick={() => setEditing(post)} className="rounded p-1.5 text-muted transition-colors hover:text-accent">
               <Edit3 size={14} />
             </button>
+            <button onClick={() => onViewComments(post.slug)} className="rounded p-1.5 text-muted transition-colors hover:text-accent" title="查看评论">
+              <MessageCircle size={14} />
+            </button>
             <button onClick={() => togglePublish(post)} className="rounded p-1.5 text-muted transition-colors hover:text-foreground">
               {post.published ? <Eye size={14} /> : <EyeOff size={14} />}
             </button>
@@ -365,6 +384,110 @@ function PostsEditor({ posts, setPosts }: { posts: PostAdmin[]; setPosts: (p: Po
         <Plus size={16} />
         写新文章
       </button>
+    </div>
+  );
+}
+
+// ─── Comments Manager ────────────────────────────────────────
+function CommentsManager({
+  comments,
+  setComments,
+  filterSlug,
+  setFilterSlug,
+}: {
+  comments: CommentAdmin[];
+  setComments: (c: CommentAdmin[]) => void;
+  filterSlug: string;
+  setFilterSlug: (s: string) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+
+  // 按 slug 筛选加载评论
+  const loadComments = useCallback(async (slug?: string) => {
+    setLoading(true);
+    try {
+      const url = slug ? `/api/admin/comments?slug=${encodeURIComponent(slug)}` : "/api/admin/comments";
+      const res = await fetch(url);
+      const data = await res.json();
+      setComments(data || []);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [setComments]);
+
+  // 当 filterSlug 变化时重新加载
+  useEffect(() => {
+    loadComments(filterSlug || undefined);
+  }, [filterSlug, loadComments]);
+
+  const deleteEntry = async (id: number) => {
+    if (!confirm("确定删除这条评论？（回复也会一起删除）")) return;
+    await fetch(`/api/admin/comments/${id}`, { method: "DELETE" });
+    setComments(comments.filter((c) => c.id !== id && c.parentId !== id));
+  };
+
+  const clearFilter = () => {
+    setFilterSlug("");
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* 筛选栏 */}
+      {filterSlug && (
+        <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5">
+          <span className="text-sm text-muted">筛选文章：</span>
+          <span className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">/{filterSlug}</span>
+          <button onClick={clearFilter} className="ml-auto text-xs text-muted hover:text-foreground transition-colors">
+            清除筛选
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 size={20} className="animate-spin text-muted" />
+        </div>
+      ) : comments.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-12 text-center">
+          <MessageCircle size={28} className="mx-auto mb-3 text-muted" />
+          <p className="text-muted">{filterSlug ? "该文章暂无评论" : "暂无评论"}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {comments.map((comment) => (
+            <div key={comment.id} className={`rounded-lg border border-border bg-card px-4 py-3 ${comment.parentId ? "ml-6 border-l-2 border-l-accent/20" : ""}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{comment.nickname}</span>
+                    {comment.floor && (
+                      <span className="rounded bg-muted/15 px-1.5 py-0.5 text-xs text-muted">#{comment.floor}</span>
+                    )}
+                    {comment.parentId && (
+                      <span className="rounded bg-orange-500/10 px-1.5 py-0.5 text-xs text-orange-600 dark:text-orange-400">回复</span>
+                    )}
+                    {!filterSlug && (
+                      <button
+                        onClick={() => setFilterSlug(comment.postSlug)}
+                        className="rounded-full bg-accent/10 px-2 py-0.5 text-xs text-accent hover:bg-accent/20 transition-colors"
+                      >
+                        /{comment.postSlug}
+                      </button>
+                    )}
+                    <span className="text-xs text-muted">{new Date(comment.createdAt + "Z").toLocaleString("zh-CN")}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-muted whitespace-pre-wrap">{comment.content}</p>
+                </div>
+                <button onClick={() => deleteEntry(comment.id)} className="shrink-0 rounded p-1 text-muted transition-colors hover:text-red-500">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

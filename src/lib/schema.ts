@@ -50,6 +50,16 @@ export const guestbook = sqliteTable("guestbook", {
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
 
+export const comments = sqliteTable("comments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  postSlug: text("post_slug").notNull(),
+  parentId: integer("parent_id"),       // 楼中楼：回复哪条评论，NULL 表示主评论
+  floor: integer("floor"),               // 主评论楼数，回复为 NULL
+  nickname: text("nickname").notNull(),
+  content: text("content").notNull(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
+
 export const siteConfig = sqliteTable("site_config", {
   key: text("key").primaryKey(),
   value: text("value").notNull().default(""),
