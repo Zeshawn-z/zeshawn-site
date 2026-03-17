@@ -19,7 +19,7 @@ export function getDb() {
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
 
-  // Create tables (idempotent)
+  // Step 1: Create tables (idempotent)
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS projects (
       id TEXT PRIMARY KEY,
@@ -65,10 +65,34 @@ export function getDb() {
       message TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_slug TEXT NOT NULL,
+      parent_id INTEGER,
+      floor INTEGER,
+      nickname TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS site_config (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL DEFAULT ''
     );
+  `);
+
+  // Step 2: Migration — add columns to existing comments table if missing
+  // ALTER TABLE ADD COLUMN errors when column already exists, so catch and ignore
+  for (const col of [
+    `ALTER TABLE comments ADD COLUMN parent_id INTEGER`,
+    `ALTER TABLE comments ADD COLUMN floor INTEGER`,
+  ]) {
+    try { sqlite.exec(col); } catch { /* column already exists */ }
+  }
+
+  // Step 3: Create indexes (after migration ensures columns exist)
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS idx_comments_post_slug ON comments(post_slug);
+    CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON comments(parent_id);
   `);
 
   _db = drizzle(sqlite, { schema });
