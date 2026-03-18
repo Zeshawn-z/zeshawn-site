@@ -64,3 +64,12 @@ export const siteConfig = sqliteTable("site_config", {
   key: text("key").primaryKey(),
   value: text("value").notNull().default(""),
 });
+
+export const images = sqliteTable("images", {
+  id: text("id").primaryKey(),
+  filename: text("filename").notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  data: text("data").notNull(),           // base64 编码的图片数据
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});

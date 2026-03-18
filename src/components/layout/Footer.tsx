@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Github, Twitter, Mail } from "lucide-react";
-import { useSiteConfig } from "@/components/SiteConfigProvider";
+import { useSiteConfig } from "@/components/layout/SiteConfigProvider";
 
 const iconMap: Record<string, React.ComponentType<{ size?: number }>> = {
   github: Github,

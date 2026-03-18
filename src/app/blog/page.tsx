@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen, PenLine, Calendar, Clock } from "lucide-react";
-import { getAllPosts } from "@/lib/data";
-import ScrollReveal from "@/components/ScrollReveal";
-import GlowCard from "@/components/GlowCard";
-import SpotlightSection from "@/components/SpotlightSection";
+import { getAllPosts } from "@/lib/db/data";
+import ScrollReveal from "@/components/common/ScrollReveal";
+import GlowCard from "@/components/common/GlowCard";
+import SpotlightSection from "@/components/common/SpotlightSection";
 
 export const metadata: Metadata = {
   title: "博客",

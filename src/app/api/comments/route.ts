@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCommentsBySlug, addComment } from "@/lib/data";
+import { getCommentsBySlug, addComment } from "@/lib/db/data";
 
 // GET /api/comments?slug=xxx&page=1&order=asc
 export async function GET(request: NextRequest) {

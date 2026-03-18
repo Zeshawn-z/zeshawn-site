@@ -8,14 +8,14 @@ import {
   Calendar,
   Clock,
 } from "lucide-react";
-import { getDynamicSiteConfig } from "@/lib/site-config-dynamic";
-import { getProjects, getAllPosts } from "@/lib/data";
-import HeroParticles from "@/components/HeroParticles";
-import TypeWriter from "@/components/TypeWriter";
-import ScrollReveal from "@/components/ScrollReveal";
-import GlowCard from "@/components/GlowCard";
-import MagneticButton from "@/components/MagneticButton";
-import SpotlightSection from "@/components/SpotlightSection";
+import { getDynamicSiteConfig } from "@/lib/config/site-config-dynamic";
+import { getProjects, getAllPosts } from "@/lib/db/data";
+import HeroParticles from "@/components/home/HeroParticles";
+import TypeWriter from "@/components/home/TypeWriter";
+import ScrollReveal from "@/components/common/ScrollReveal";
+import GlowCard from "@/components/common/GlowCard";
+import MagneticButton from "@/components/common/MagneticButton";
+import SpotlightSection from "@/components/common/SpotlightSection";
 
 export const dynamic = "force-dynamic";
 

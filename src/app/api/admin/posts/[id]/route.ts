@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
-import { updatePost, deletePost } from "@/lib/data";
+import { isAuthenticated } from "@/lib/auth/auth";
+import { updatePost, deletePost } from "@/lib/db/data";
 
 interface Context {
   params: Promise<{ id: string }>;

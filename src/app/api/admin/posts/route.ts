@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
-import { getAllPostsAdmin, createPost } from "@/lib/data";
+import { isAuthenticated } from "@/lib/auth/auth";
+import { getAllPostsAdmin, createPost } from "@/lib/db/data";
 
 export async function GET() {
   if (!(await isAuthenticated())) {
