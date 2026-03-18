@@ -8,7 +8,7 @@ import {
   User,
   MessageCircle,
 } from "lucide-react";
-import ScrollReveal from "@/components/ScrollReveal";
+import ScrollReveal from "@/components/common/ScrollReveal";
 
 interface GuestbookEntry {
   id: number;

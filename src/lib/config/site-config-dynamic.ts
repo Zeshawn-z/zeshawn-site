@@ -1,6 +1,6 @@
 // Server-only — reads from DB. The single source of truth for site config.
-import { getSiteConfig as getDbConfig } from "./data";
-import type { SiteConfigData } from "@/components/SiteConfigProvider";
+import { getSiteConfig as getDbConfig } from "@/lib/db/data";
+import type { SiteConfigData } from "@/components/layout/SiteConfigProvider";
 
 const NAV = [
   { href: "/", label: "首页" },
@@ -24,6 +24,10 @@ export function getDynamicSiteConfig() {
       avatar: "/avatar.jpg",
       location: cfg["author.location"] || "",
       email: cfg["author.email"] || "",
+    },
+
+    about: {
+      intro: cfg["about.intro"] || "",
     },
 
     hero: {

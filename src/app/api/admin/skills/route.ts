@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
-import { getSkills, saveSkills } from "@/lib/data";
+import { isAuthenticated } from "@/lib/auth/auth";
+import { getSkills, saveSkills } from "@/lib/db/data";
 
 export async function GET() {
   const skills = getSkills();

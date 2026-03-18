@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { ExternalLink, Github, Code2 } from "lucide-react";
-import { getProjects } from "@/lib/data";
-import ScrollReveal from "@/components/ScrollReveal";
-import GlowCard from "@/components/GlowCard";
-import SpotlightSection from "@/components/SpotlightSection";
+import { getProjects } from "@/lib/db/data";
+import ScrollReveal from "@/components/common/ScrollReveal";
+import GlowCard from "@/components/common/GlowCard";
+import SpotlightSection from "@/components/common/SpotlightSection";
 
 export const metadata: Metadata = {
   title: "项目",

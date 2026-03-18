@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Calendar, Clock } from "lucide-react";
-import { getPostBySlug, getAllPosts } from "@/lib/data";
-import { renderMarkdown } from "@/lib/markdown";
-import CopyCodeButton from "@/components/CopyCodeButton";
-import BlogComments from "@/components/BlogComments";
+import { getPostBySlug, getAllPosts } from "@/lib/db/data";
+import { renderMarkdown } from "@/lib/content/markdown";
+import CopyCodeButton from "@/components/common/CopyCodeButton";
+import BlogComments from "@/components/blog/BlogComments";
 
 export const dynamic = "force-dynamic";
 

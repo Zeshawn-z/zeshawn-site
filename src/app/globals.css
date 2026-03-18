@@ -49,8 +49,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ═══ GitHub Markdown 样式（官方库） ═══════════════════════════ */
-@import "github-markdown-css/github-markdown.css";
+/* ═══ GitHub Markdown 样式（仅亮色基础，暗色由 .dark 选择器控制） ═══ */
+@import "github-markdown-css/github-markdown-light.css";
 
 /* KaTeX 公式样式（本地引入，确保加载顺序在 github-markdown-css 之后） */
 @import "katex/dist/katex.min.css";

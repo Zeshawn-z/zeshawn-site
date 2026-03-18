@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { getClientSiteConfig } from "@/lib/site-config-dynamic";
-import SiteConfigProvider from "@/components/SiteConfigProvider";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
+import { getClientSiteConfig, getDynamicSiteConfig } from "@/lib/config/site-config-dynamic";
+import SiteConfigProvider from "@/components/layout/SiteConfigProvider";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,13 +16,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Zeshawn",
-    template: "%s | Zeshawn",
-  },
-  description: "Zeshawn 的个人网站 - 项目、博客与技术分享",
-};
+export const dynamic = "force-dynamic";
+
+export function generateMetadata(): Metadata {
+  const cfg = getDynamicSiteConfig();
+  return {
+    title: {
+      default: cfg.name,
+      template: `%s | ${cfg.name}`,
+    },
+    description: cfg.description || `${cfg.name} 的个人网站 - 项目、博客与技术分享`,
+  };
+}
 
 // Inline script to prevent FOUC (flash of unstyled content) on theme load
 const themeScript = `

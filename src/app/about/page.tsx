@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Mail, User, Briefcase, Wrench, MapPin } from "lucide-react";
-import { getDynamicSiteConfig } from "@/lib/site-config-dynamic";
-import { getExperiences, getSkills } from "@/lib/data";
-import ScrollReveal from "@/components/ScrollReveal";
-import SpotlightSection from "@/components/SpotlightSection";
-import GlowTag from "@/components/GlowTag";
+import { getDynamicSiteConfig } from "@/lib/config/site-config-dynamic";
+import { getExperiences, getSkills } from "@/lib/db/data";
+import ScrollReveal from "@/components/common/ScrollReveal";
+import SpotlightSection from "@/components/common/SpotlightSection";
+import GlowTag from "@/components/common/GlowTag";
 
 export const metadata: Metadata = {
   title: "关于",
@@ -14,9 +14,25 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default function AboutPage() {
-  const { author } = getDynamicSiteConfig();
+  const { author, about } = getDynamicSiteConfig();
   const experiences = getExperiences();
   const skills = getSkills();
+
+  // 模板变量映射
+  const vars: Record<string, string> = {
+    name: author.name,
+    email: author.email,
+    location: author.location,
+    bio: author.bio,
+  };
+
+  // 自我介绍：从配置读取，支持 {{name}} 等模板变量 + 换行分段
+  const defaultIntro = `你好！我是 {{name}}，欢迎来到我的个人网站。`;
+  const introText = (about.intro || defaultIntro).replace(
+    /\{\{(\w+)\}\}/g,
+    (_, key) => vars[key] ?? `{{${key}}}`
+  );
+  const introParagraphs = introText.split("\n").filter((p: string) => p.trim());
 
   return (
     <div className="mx-auto max-w-5xl px-6 lg:px-8">
@@ -27,18 +43,9 @@ export default function AboutPage() {
           <h1 className="text-3xl font-bold tracking-tight">关于我</h1>
         </div>
         <div className="mt-6 space-y-4 leading-relaxed text-muted">
-          <p>
-            你好！我是 {author.name}，一名热爱技术的全栈开发者。我热衷于用代码解决实际问题，
-            构建优雅、高效的数字产品。
-          </p>
-          <p>
-            我对前端技术有着深入的理解，尤其擅长 React 生态和现代 Web 开发。
-            同时，我也对后端开发、系统设计和开源社区充满热情。
-          </p>
-          <p>
-            工作之余，我喜欢通过写博客和技术文章来记录和分享学习心得。
-            我相信知识共享能让整个社区变得更好。
-          </p>
+          {introParagraphs.map((paragraph: string, i: number) => (
+            <p key={i}>{paragraph}</p>
+          ))}
         </div>
         {author.location && (
           <div className="mt-4 inline-flex items-center gap-1.5 text-sm text-muted">
