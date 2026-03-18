@@ -47,3 +47,4 @@ data/*.db-wal
 *.tsbuildinfo
 next-env.d.ts
 test
+local
