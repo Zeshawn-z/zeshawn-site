@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
-import { getAllComments } from "@/lib/data";
+import { isAuthenticated } from "@/lib/auth/auth";
+import { getAllComments } from "@/lib/db/data";
 
 export async function GET(request: NextRequest) {
   if (!(await isAuthenticated())) {

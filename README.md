@@ -90,6 +90,21 @@ npm run migrate  # 一次性迁移脚本
 ./scripts/deploy-standalone.bat
 ```
 
+也可以直接让服务器从 GitHub Release 下载并部署（无需本地构建）：
+
+说明：该脚本默认下载 CI 产物 `zeshawn-site.tar.gz`。
+如果服务器直连 GitHub 不通，脚本会通过 SSH 反向端口转发使用本地 Clash 代理（默认 `127.0.0.1:7890`）。
+
+```bat
+./scripts/deploy-release.bat
+```
+
+默认会使用最新 release（latest），也可传入其它标签：
+
+```bat
+./scripts/deploy-release.bat v2026.03.17.1
+```
+
 ### 部署前请确认
 
 - 本机 SSH Host 已配置 `ali`
@@ -110,6 +125,7 @@ scripts/
 	migrate.ts            # 数据迁移脚本
 	deploy-build-wsl.sh   # WSL 构建脚本
 	deploy-standalone.bat # 部署入口
+	deploy-release.bat    # 服务器从 Release 下载并部署
 content/blog/           # MDX 博客内容
 data/                   # 样板数据与本地数据库
 data-private/           # 私有数据备份（默认忽略）
@@ -120,3 +136,9 @@ data-private/           # 私有数据备份（默认忽略）
 - `npm run migrate` 主要用于初始化，不建议在生产反复执行。
 - 如果你改了数据库结构，请同步调整 `scripts/migrate.ts` 与 `src/lib/schema.ts`。
 - 部署失败时，优先检查：WSL Node 路径、SSH 可达性、服务器 systemd 日志。
+
+## 9. 服务器配置备份
+
+- Nginx 站点配置备份：`ops/server-config/nginx/zeshawn.me.conf`
+- systemd 服务配置备份：`ops/server-config/systemd/zeshawn-next.service`
+- 环境变量示例（脱敏）：`ops/server-config/systemd/zeshawn-next.service.d/env.conf.example`

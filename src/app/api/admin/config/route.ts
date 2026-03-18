@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
-import { getSiteConfig, updateSiteConfig } from "@/lib/data";
+import { isAuthenticated } from "@/lib/auth/auth";
+import { getSiteConfig, updateSiteConfig } from "@/lib/db/data";
 
 export async function GET() {
   if (!(await isAuthenticated())) {

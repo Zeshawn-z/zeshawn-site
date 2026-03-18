@@ -212,12 +212,23 @@ export function updatePost(
 
 export function deletePost(id: string) {
   const db = getDb();
-  // 先查出 slug 用于级联删除评论
-  const post = db.select({ slug: schema.posts.slug }).from(schema.posts).where(eq(schema.posts.id, id)).get();
+  // 查出文章详情，用于级联删除评论和图片
+  const post = db.select({ slug: schema.posts.slug, content: schema.posts.content }).from(schema.posts).where(eq(schema.posts.id, id)).get();
   if (post) {
     deleteCommentsBySlug(post.slug);
+    // 清理文章内容中引用的图片
+    deleteImagesInContent(post.content);
   }
   db.delete(schema.posts).where(eq(schema.posts.id, id)).run();
+}
+
+/** 扫描 markdown 内容中的 /api/images/xxx 引用并删除对应图片 */
+function deleteImagesInContent(content: string) {
+  const regex = /\/api\/images\/([a-f0-9-]{36})/g;
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    try { deleteImage(match[1]); } catch { /* ignore */ }
+  }
 }
 
 function rowToPost(r: typeof schema.posts.$inferSelect): BlogPost {
@@ -512,4 +523,79 @@ export function updateSiteConfig(updates: Record<string, string>) {
         .run();
     }
   });
+}
+
+// ─── Images ───────────────────────────────────────────────────
+
+export function saveImage(id: string, filename: string, mimeType: string, size: number, base64Data: string) {
+  const db = getDb();
+  db.insert(schema.images)
+    .values({ id, filename, mimeType, size, data: base64Data })
+    .run();
+  return { id, filename, mimeType, size };
+}
+
+export function getImage(id: string) {
+  const db = getDb();
+  return db.select().from(schema.images).where(eq(schema.images.id, id)).get();
+}
+
+export function deleteImage(id: string) {
+  const db = getDb();
+  db.delete(schema.images).where(eq(schema.images.id, id)).run();
+}
+
+/** 获取所有图片（不含 base64 data，用于列表展示） */
+export function getAllImages() {
+  const db = getDb();
+  return db
+    .select({
+      id: schema.images.id,
+      filename: schema.images.filename,
+      mimeType: schema.images.mimeType,
+      size: schema.images.size,
+      createdAt: schema.images.createdAt,
+    })
+    .from(schema.images)
+    .orderBy(sql`created_at DESC`)
+    .all();
+}
+
+/** 扫描所有帖子内容，删除未被任何帖子引用的图片，返回被删除的图片 id 列表 */
+export function cleanupUnusedImages() {
+  const db = getDb();
+
+  // 1. 获取所有帖子的 content
+  const allPosts = db
+    .select({ content: schema.posts.content })
+    .from(schema.posts)
+    .all();
+
+  // 2. 收集所有帖子中引用的图片 id
+  const usedIds = new Set<string>();
+  const regex = /\/api\/images\/([a-f0-9-]{36})/g;
+  for (const post of allPosts) {
+    let match;
+    while ((match = regex.exec(post.content)) !== null) {
+      usedIds.add(match[1]);
+    }
+    regex.lastIndex = 0; // reset for next post
+  }
+
+  // 3. 获取所有图片 id
+  const allImages = db
+    .select({ id: schema.images.id })
+    .from(schema.images)
+    .all();
+
+  // 4. 删除未被引用的图片
+  const deletedIds: string[] = [];
+  for (const img of allImages) {
+    if (!usedIds.has(img.id)) {
+      db.delete(schema.images).where(eq(schema.images.id, img.id)).run();
+      deletedIds.push(img.id);
+    }
+  }
+
+  return deletedIds;
 }

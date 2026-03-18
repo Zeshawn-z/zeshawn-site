@@ -49,8 +49,8 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ═══ GitHub Markdown 样式（官方库） ═══════════════════════════ */
-@import "github-markdown-css/github-markdown.css";
+/* ═══ GitHub Markdown 样式（仅亮色基础，暗色由 .dark 选择器控制） ═══ */
+@import "github-markdown-css/github-markdown-light.css";
 
 /* KaTeX 公式样式（本地引入，确保加载顺序在 github-markdown-css 之后） */
 @import "katex/dist/katex.min.css";
@@ -68,6 +68,30 @@ body {
   background-color: transparent;
   font-family: inherit;
   font-size: 16px;
+}
+
+/* ── 暗色模式：覆盖 github-markdown-css 全部颜色变量 ───────── */
+.dark .markdown-body {
+  color-scheme: dark;
+  --fgColor-default: #f0f6fc;
+  --fgColor-muted: #9198a1;
+  --fgColor-accent: #4493f8;
+  --fgColor-attention: #d29922;
+  --fgColor-danger: #f85149;
+  --fgColor-done: #ab7df8;
+  --fgColor-success: #3fb950;
+  --bgColor-default: transparent;
+  --bgColor-muted: #151b23;
+  --bgColor-neutral-muted: #656c7633;
+  --bgColor-attention-muted: #bb800926;
+  --borderColor-default: #3d444d;
+  --borderColor-muted: #3d444db3;
+  --borderColor-neutral-muted: #3d444db3;
+  --borderColor-accent-emphasis: #1f6feb;
+  --borderColor-attention-emphasis: #9e6a03;
+  --borderColor-danger-emphasis: #da3633;
+  --borderColor-done-emphasis: #8957e5;
+  --borderColor-success-emphasis: #238636;
 }
 
 /* ── 修复公式渲染两次：强制隐藏 MathML 语义层 ────────────── */
