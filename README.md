@@ -105,6 +105,13 @@ npm run migrate  # 一次性迁移脚本
 ./scripts/deploy-release.bat v2026.03.17.1
 ```
 
+`deploy-release.bat` 支持两种服务运行模式：
+
+- standalone 模式：`WorkingDirectory=/var/www/zeshawn-site/.next/standalone`
+- root 模式：`WorkingDirectory=/var/www/zeshawn-site`
+
+脚本会自动检测当前服务模式并按对应方式解压与链接 data 目录。
+
 ### 部署前请确认
 
 - 本机 SSH Host 已配置 `ali`
@@ -126,6 +133,7 @@ scripts/
 	deploy-build-wsl.sh   # WSL 构建脚本
 	deploy-standalone.bat # 部署入口
 	deploy-release.bat    # 服务器从 Release 下载并部署
+	server-init.sh        # 服务器初始化（nginx/systemd/certbot）
 content/blog/           # MDX 博客内容
 data/                   # 样板数据与本地数据库
 data-private/           # 私有数据备份（默认忽略）
@@ -142,3 +150,85 @@ data-private/           # 私有数据备份（默认忽略）
 - Nginx 站点配置备份：`ops/server-config/nginx/zeshawn.me.conf`
 - systemd 服务配置备份：`ops/server-config/systemd/zeshawn-next.service`
 - 环境变量示例（脱敏）：`ops/server-config/systemd/zeshawn-next.service.d/env.conf.example`
+
+## 10. 服务器初始部署（含 Certbot）
+
+首次在服务器初始化时可使用：
+
+```bash
+sudo bash scripts/server-init.sh <domain> <email> [app_dir] [service_name]
+```
+
+示例：
+
+```bash
+sudo bash scripts/server-init.sh zeshawn.me admin@example.com
+```
+
+脚本会自动完成：
+
+1. 安装 nginx + certbot
+2. 配置数据目录软链接（`<app_dir>/data` -> `<app_dir>/.next/standalone/data`）
+3. 配置并启动 systemd 服务
+4. 配置 nginx 反代与静态目录
+5. 申请并启用 HTTPS 证书
+
+产物结构兼容说明：
+
+- 支持直接解压到项目根目录（`<app_dir>/server.js`）
+- 也支持旧结构（`<app_dir>/.next/standalone/server.js`）
+
+升级建议：
+
+- 推荐使用 standalone 运行布局（`<app_dir>/.next/standalone/server.js`），与 `deploy-release.bat` 的升级路径最一致。
+- 如果当前是 root 运行布局（`<app_dir>/server.js`），请确保升级脚本也会更新根目录 `server.js`，否则可能出现“服务运行正常但代码未升级”的情况。
+
+说明：脚本会按你传入的域名原样配置，不会自动拼接 `www`。
+
+### 10.1 可改项说明
+
+你通常只需要改这 4 个输入参数：
+
+1. domain
+说明：你的主域名。
+示例：zeshawn.me 或 example.com。
+
+2. email
+说明：Certbot 用于签发证书和续期提醒的邮箱。
+示例：admin@example.com。
+
+3. app_dir（可选）
+说明：站点部署目录，默认 /var/www/zeshawn-site。
+什么时候改：你把项目部署在其它目录时。
+
+4. service_name（可选）
+说明：systemd 服务名，默认 zeshawn-next。
+什么时候改：同机部署多个站点，或你想用统一命名规范时。
+
+### 10.2 常见改法示例
+
+使用默认目录与默认服务名：
+
+```bash
+sudo bash scripts/server-init.sh example.com admin@example.com
+```
+
+使用自定义部署目录：
+
+```bash
+sudo bash scripts/server-init.sh example.com admin@example.com /srv/example-site
+```
+
+使用自定义服务名：
+
+```bash
+sudo bash scripts/server-init.sh example.com admin@example.com /srv/example-site example-next
+```
+
+### 10.3 不建议手改的内容
+
+- Nginx 反代目标（127.0.0.1:3000）
+- 数据目录软链接逻辑（app_dir/data -> app_dir/.next/standalone/data）
+- systemd 重启策略（Restart=always）
+
+如果确实要改，建议先在测试机验证后再用于生产环境。

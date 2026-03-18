@@ -57,6 +57,7 @@ body {
 
 /* 让 markdown-body 继承站点主题色而非使用 github-markdown-css 自带的颜色 */
 .markdown-body {
+  /* Legacy github-markdown-css tokens */
   --color-fg-default: var(--foreground);
   --color-fg-muted: var(--muted);
   --color-canvas-default: var(--background);
@@ -64,34 +65,49 @@ body {
   --color-border-default: var(--border);
   --color-border-muted: var(--border);
   --color-accent-fg: var(--accent);
+
+  /* Newer GitHub tokens (some versions use these) */
+  --fgColor-default: var(--foreground);
+  --fgColor-muted: var(--muted);
+  --canvas-default: var(--background);
+  --canvas-subtle: var(--card);
+  --borderColor-default: var(--border);
+  --borderColor-muted: var(--border);
+  --accent-fgColor: var(--accent);
+
   --color-neutral-muted: color-mix(in srgb, var(--muted) 20%, transparent);
   background-color: transparent;
+  color: var(--foreground);
   font-family: inherit;
   font-size: 16px;
 }
 
-/* ── 暗色模式：覆盖 github-markdown-css 全部颜色变量 ───────── */
-.dark .markdown-body {
-  color-scheme: dark;
-  --fgColor-default: #f0f6fc;
-  --fgColor-muted: #9198a1;
-  --fgColor-accent: #4493f8;
-  --fgColor-attention: #d29922;
-  --fgColor-danger: #f85149;
-  --fgColor-done: #ab7df8;
-  --fgColor-success: #3fb950;
-  --bgColor-default: transparent;
-  --bgColor-muted: #151b23;
-  --bgColor-neutral-muted: #656c7633;
-  --bgColor-attention-muted: #bb800926;
-  --borderColor-default: #3d444d;
-  --borderColor-muted: #3d444db3;
-  --borderColor-neutral-muted: #3d444db3;
-  --borderColor-accent-emphasis: #1f6feb;
-  --borderColor-attention-emphasis: #9e6a03;
-  --borderColor-danger-emphasis: #da3633;
-  --borderColor-done-emphasis: #8957e5;
-  --borderColor-success-emphasis: #238636;
+/* Dark-mode prose readability (leave code block colors to Shiki rules below) */
+.dark .markdown-body,
+.dark .markdown-body p,
+.dark .markdown-body li,
+.dark .markdown-body td,
+.dark .markdown-body th,
+.dark .markdown-body h1,
+.dark .markdown-body h2,
+.dark .markdown-body h3,
+.dark .markdown-body h4,
+.dark .markdown-body h5,
+.dark .markdown-body h6,
+.dark .markdown-body strong,
+.dark .markdown-body em,
+.dark .markdown-body dd,
+.dark .markdown-body dt,
+.dark .markdown-body summary {
+  color: var(--foreground);
+}
+
+.dark .markdown-body blockquote {
+  color: var(--muted);
+}
+
+.dark .markdown-body a {
+  color: var(--accent);
 }
 
 /* ── 修复公式渲染两次：强制隐藏 MathML 语义层 ────────────── */
