@@ -14,12 +14,14 @@ interface GuestbookEntry {
   id: number;
   nickname: string;
   message: string;
+  location?: string;
   createdAt: string;
 }
 
 export default function GuestbookPage() {
   const [entries, setEntries] = useState<GuestbookEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [nickname, setNickname] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -28,9 +30,13 @@ export default function GuestbookPage() {
 
   const loadEntries = useCallback(async () => {
     try {
+      setLoadError("");
       const res = await fetch("/api/guestbook");
+      if (!res.ok) throw new Error("加载失败");
       const data = await res.json();
       setEntries(data.entries || []);
+    } catch {
+      setLoadError("留言加载失败，请刷新页面重试");
     } finally {
       setLoading(false);
     }
@@ -115,9 +121,11 @@ export default function GuestbookPage() {
           )}
 
           <div className="mb-3">
+            <label htmlFor="guestbook-nickname" className="sr-only">昵称</label>
             <div className="flex items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2.5 transition-colors focus-within:border-accent">
               <User size={14} className="shrink-0 text-muted" />
               <input
+                id="guestbook-nickname"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
                 placeholder="你的昵称"
@@ -128,7 +136,9 @@ export default function GuestbookPage() {
           </div>
 
           <div className="mb-4">
+            <label htmlFor="guestbook-message" className="sr-only">留言内容</label>
             <textarea
+              id="guestbook-message"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="写点什么吧..."
@@ -162,6 +172,17 @@ export default function GuestbookPage() {
           <div className="flex items-center justify-center py-12">
             <Loader2 size={24} className="animate-spin text-muted" />
           </div>
+        ) : loadError ? (
+          <div className="rounded-lg border border-dashed border-red-200/50 bg-red-50/50 p-12 text-center dark:border-red-500/20 dark:bg-red-950/30">
+            <MessageSquare size={28} className="mx-auto mb-3 text-red-400" />
+            <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
+            <button
+              onClick={() => { setLoading(true); loadEntries(); }}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm text-muted transition-colors hover:text-foreground"
+            >
+              重新加载
+            </button>
+          </div>
         ) : entries.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-12 text-center">
             <MessageSquare size={28} className="mx-auto mb-3 text-muted" />
@@ -177,6 +198,11 @@ export default function GuestbookPage() {
                       {entry.nickname.charAt(0).toUpperCase()}
                     </div>
                     <span className="text-sm font-medium">{entry.nickname}</span>
+                    {entry.location && (
+                      <span className="text-xs text-muted/70">
+                        来自{entry.location}
+                      </span>
+                    )}
                     <span className="text-xs text-muted">
                       {new Date(entry.createdAt).toLocaleDateString("zh-CN", {
                         year: "numeric",

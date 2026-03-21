@@ -86,13 +86,24 @@ export function getDb() {
       data TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS pdfs (
+      id TEXT PRIMARY KEY,
+      filename TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      data TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
-  // Step 2: Migration — add columns to existing comments table if missing
+  // Step 2: Migration — add columns to existing tables if missing
   // ALTER TABLE ADD COLUMN errors when column already exists, so catch and ignore
   for (const col of [
     `ALTER TABLE comments ADD COLUMN parent_id INTEGER`,
     `ALTER TABLE comments ADD COLUMN floor INTEGER`,
+    `ALTER TABLE comments ADD COLUMN location TEXT`,
+    `ALTER TABLE posts ADD COLUMN content_type TEXT NOT NULL DEFAULT 'markdown'`,
+    `ALTER TABLE posts ADD COLUMN pdf_id TEXT`,
+    `ALTER TABLE guestbook ADD COLUMN location TEXT`,
   ]) {
     try { sqlite.exec(col); } catch { /* column already exists */ }
   }

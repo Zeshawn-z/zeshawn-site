@@ -161,6 +161,8 @@ export function createPost(post: {
   title: string;
   description: string;
   content: string;
+  contentType?: "markdown" | "pdf";
+  pdfId?: string;
   date: string;
   tags: string[];
   published: boolean;
@@ -174,6 +176,8 @@ export function createPost(post: {
     title: post.title,
     description: post.description,
     content: post.content,
+    contentType: post.contentType || "markdown",
+    pdfId: post.pdfId || null,
     date: post.date,
     tags: post.tags,
     published: post.published,
@@ -190,6 +194,8 @@ export function updatePost(
     title?: string;
     description?: string;
     content?: string;
+    contentType?: "markdown" | "pdf";
+    pdfId?: string | null;
     date?: string;
     tags?: string[];
     published?: boolean;
@@ -203,6 +209,8 @@ export function updatePost(
   if (post.title !== undefined) updates.title = post.title;
   if (post.description !== undefined) updates.description = post.description;
   if (post.content !== undefined) updates.content = post.content;
+  if (post.contentType !== undefined) updates.contentType = post.contentType;
+  if (post.pdfId !== undefined) updates.pdfId = post.pdfId;
   if (post.date !== undefined) updates.date = post.date;
   if (post.tags !== undefined) updates.tags = post.tags;
   if (post.published !== undefined) updates.published = post.published;
@@ -213,11 +221,19 @@ export function updatePost(
 export function deletePost(id: string) {
   const db = getDb();
   // 查出文章详情，用于级联删除评论和图片
-  const post = db.select({ slug: schema.posts.slug, content: schema.posts.content }).from(schema.posts).where(eq(schema.posts.id, id)).get();
+  const post = db.select({
+    slug: schema.posts.slug,
+    content: schema.posts.content,
+    pdfId: schema.posts.pdfId,
+  }).from(schema.posts).where(eq(schema.posts.id, id)).get();
   if (post) {
     deleteCommentsBySlug(post.slug);
     // 清理文章内容中引用的图片
     deleteImagesInContent(post.content);
+    // 清理 PDF 文件
+    if (post.pdfId) {
+      try { deletePdf(post.pdfId); } catch { /* ignore */ }
+    }
   }
   db.delete(schema.posts).where(eq(schema.posts.id, id)).run();
 }
@@ -232,8 +248,9 @@ function deleteImagesInContent(content: string) {
 }
 
 function rowToPost(r: typeof schema.posts.$inferSelect): BlogPost {
+  const contentType = (r.contentType || "markdown") as "markdown" | "pdf";
   const wordCount = r.content.trim().split(/\s+/).length;
-  const readingTime = `${Math.max(1, Math.ceil(wordCount / 200))} min`;
+  const readingTime = contentType === "pdf" ? undefined : `${Math.max(1, Math.ceil(wordCount / 200))} min`;
   return {
     slug: r.slug,
     title: r.title,
@@ -242,6 +259,8 @@ function rowToPost(r: typeof schema.posts.$inferSelect): BlogPost {
     tags: r.tags,
     readingTime,
     published: r.published,
+    contentType,
+    pdfId: r.pdfId || undefined,
   };
 }
 
@@ -265,6 +284,7 @@ export interface Comment {
   floor: number | null;
   nickname: string;
   content: string;
+  location?: string;
   createdAt: string;
   replies?: Comment[];       // 前端组装
 }
@@ -388,7 +408,7 @@ export function getAllCommentsCount(slug?: string): number {
 /**
  * 发表主评论：自动计算楼数
  */
-export function addComment(postSlug: string, nickname: string, content: string, parentId?: number): Comment {
+export function addComment(postSlug: string, nickname: string, content: string, parentId?: number, location?: string): Comment {
   const db = getDb();
 
   let floor: number | null = null;
@@ -410,6 +430,7 @@ export function addComment(postSlug: string, nickname: string, content: string, 
       floor,
       nickname,
       content,
+      location: location || null,
     })
     .run();
 
@@ -444,6 +465,7 @@ function rowToComment(r: typeof schema.comments.$inferSelect): Comment {
     floor: r.floor,
     nickname: r.nickname,
     content: r.content,
+    location: r.location || undefined,
     createdAt: r.createdAt,
   };
 }
@@ -454,6 +476,7 @@ export interface GuestbookEntry {
   id: number;
   nickname: string;
   message: string;
+  location?: string;
   createdAt: string;
 }
 
@@ -475,9 +498,9 @@ export function getGuestbookCount(): number {
   return result?.value ?? 0;
 }
 
-export function addGuestbookEntry(nickname: string, message: string): GuestbookEntry {
+export function addGuestbookEntry(nickname: string, message: string, location?: string): GuestbookEntry {
   const db = getDb();
-  const result = db.insert(schema.guestbook).values({ nickname, message }).run();
+  const result = db.insert(schema.guestbook).values({ nickname, message, location: location || null }).run();
   const row = db
     .select()
     .from(schema.guestbook)
@@ -496,6 +519,7 @@ function rowToGuestbook(r: typeof schema.guestbook.$inferSelect): GuestbookEntry
     id: r.id,
     nickname: r.nickname,
     message: r.message,
+    location: r.location || undefined,
     createdAt: r.createdAt,
   };
 }
@@ -598,4 +622,24 @@ export function cleanupUnusedImages() {
   }
 
   return deletedIds;
+}
+
+// ─── PDFs ─────────────────────────────────────────────────────
+
+export function savePdf(id: string, filename: string, size: number, base64Data: string) {
+  const db = getDb();
+  db.insert(schema.pdfs)
+    .values({ id, filename, size, data: base64Data })
+    .run();
+  return { id, filename, size };
+}
+
+export function getPdf(id: string) {
+  const db = getDb();
+  return db.select().from(schema.pdfs).where(eq(schema.pdfs.id, id)).get();
+}
+
+export function deletePdf(id: string) {
+  const db = getDb();
+  db.delete(schema.pdfs).where(eq(schema.pdfs.id, id)).run();
 }

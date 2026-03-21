@@ -20,6 +20,7 @@ interface Comment {
   floor: number | null;
   nickname: string;
   content: string;
+  location?: string;
   createdAt: string;
   replies?: Comment[];
 }
@@ -31,6 +32,7 @@ export default function BlogComments({ slug }: { slug: string }) {
   const [pages, setPages] = useState(1);
   const [order, setOrder] = useState<"asc" | "desc">("asc");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   // 发表评论表单
   const [nickname, setNickname] = useState("");
@@ -52,15 +54,17 @@ export default function BlogComments({ slug }: { slug: string }) {
   const loadComments = useCallback(async () => {
     setLoading(true);
     try {
+      setLoadError("");
       const res = await fetch(
         `/api/comments?slug=${encodeURIComponent(slug)}&page=${page}&order=${order}`
       );
+      if (!res.ok) throw new Error("加载失败");
       const data = await res.json();
       setComments(data.comments || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
     } catch {
-      // ignore
+      setLoadError("评论加载失败，请刷新重试");
     } finally {
       setLoading(false);
     }
@@ -187,9 +191,11 @@ export default function BlogComments({ slug }: { slug: string }) {
       {/* 发表评论表单 */}
       <form onSubmit={handleSubmit} className="mb-8 rounded-lg border border-border bg-card p-4">
         <div className="mb-3">
+          <label htmlFor="comment-nickname" className="sr-only">昵称</label>
           <div className="relative">
             <User size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
             <input
+              id="comment-nickname"
               type="text"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
@@ -200,7 +206,9 @@ export default function BlogComments({ slug }: { slug: string }) {
           </div>
         </div>
         <div className="mb-3">
+          <label htmlFor="comment-content" className="sr-only">评论内容</label>
           <textarea
+            id="comment-content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="写下你的评论..."
@@ -228,6 +236,17 @@ export default function BlogComments({ slug }: { slug: string }) {
         <div className="flex justify-center py-8">
           <Loader2 size={20} className="animate-spin text-muted" />
         </div>
+      ) : loadError ? (
+        <div className="rounded-lg border border-dashed border-red-200/50 bg-red-50/50 py-10 text-center dark:border-red-500/20 dark:bg-red-950/30">
+          <MessageCircle size={24} className="mx-auto mb-2 text-red-400" />
+          <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
+          <button
+            onClick={() => { setLoading(true); loadComments(); }}
+            className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
+          >
+            重新加载
+          </button>
+        </div>
       ) : comments.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border py-10 text-center">
           <MessageCircle size={24} className="mx-auto mb-2 text-muted" />
@@ -250,6 +269,9 @@ export default function BlogComments({ slug }: { slug: string }) {
                     <span className="rounded bg-muted/15 px-1.5 py-0.5 text-xs text-muted">
                       #{comment.floor}
                     </span>
+                  )}
+                  {comment.location && (
+                    <span className="text-xs text-muted/70">来自{comment.location}</span>
                   )}
                   <span className="text-xs text-muted">{formatTime(comment.createdAt)}</span>
                   <button
@@ -297,6 +319,7 @@ export default function BlogComments({ slug }: { slug: string }) {
                       value={replyContent}
                       onChange={(e) => setReplyContent(e.target.value)}
                       placeholder={`回复 ${comment.nickname}...`}
+                      aria-label={`回复 ${comment.nickname}`}
                       rows={2}
                       maxLength={1000}
                       className="flex-1 resize-none rounded-md border border-border bg-background px-3 py-2 text-xs outline-none transition-colors focus:border-accent"

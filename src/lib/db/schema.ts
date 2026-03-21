@@ -36,6 +36,8 @@ export const posts = sqliteTable("posts", {
   title: text("title").notNull().default(""),
   description: text("description").notNull().default(""),
   content: text("content").notNull().default(""),
+  contentType: text("content_type").notNull().default("markdown"), // "markdown" | "pdf"
+  pdfId: text("pdf_id"),  // PDF 文件存储在 pdfs 表中的 id
   date: text("date").notNull().default(""),
   tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
   published: integer("published", { mode: "boolean" }).notNull().default(true),
@@ -47,6 +49,7 @@ export const guestbook = sqliteTable("guestbook", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   nickname: text("nickname").notNull(),
   message: text("message").notNull(),
+  location: text("location"),  // IP 归属地，如 "广东广州"
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
 
@@ -57,6 +60,7 @@ export const comments = sqliteTable("comments", {
   floor: integer("floor"),               // 主评论楼数，回复为 NULL
   nickname: text("nickname").notNull(),
   content: text("content").notNull(),
+  location: text("location"),            // IP 归属地，如 "北京"
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
 
@@ -71,5 +75,13 @@ export const images = sqliteTable("images", {
   mimeType: text("mime_type").notNull(),
   size: integer("size").notNull(),
   data: text("data").notNull(),           // base64 编码的图片数据
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const pdfs = sqliteTable("pdfs", {
+  id: text("id").primaryKey(),
+  filename: text("filename").notNull(),
+  size: integer("size").notNull(),
+  data: text("data").notNull(),           // base64 编码的 PDF 数据
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });

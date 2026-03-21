@@ -18,6 +18,8 @@ export interface BlogPost {
   tags: string[];
   readingTime?: string;
   published?: boolean;
+  contentType?: "markdown" | "pdf";
+  pdfId?: string;
 }
 
 export interface Experience {

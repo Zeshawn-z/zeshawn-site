@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpen, PenLine, Calendar, Clock } from "lucide-react";
+import { BookOpen, PenLine, Calendar, Clock, FileText } from "lucide-react";
 import { getAllPosts } from "@/lib/db/data";
 import ScrollReveal from "@/components/common/ScrollReveal";
 import GlowCard from "@/components/common/GlowCard";
@@ -12,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+export const revalidate = 30; // 每 30 秒重新验证一次
 
 export default function BlogPage() {
   const posts = getAllPosts();
@@ -52,10 +53,17 @@ export default function BlogPage() {
                           <Calendar size={12} />
                           {post.date}
                         </span>
-                        <span className="inline-flex items-center gap-1 text-xs text-muted">
-                          <Clock size={12} />
-                          {post.readingTime} 阅读
-                        </span>
+                        {post.readingTime ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-muted">
+                            <Clock size={12} />
+                            {post.readingTime} 阅读
+                          </span>
+                        ) : post.contentType === "pdf" ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
+                            <FileText size={12} />
+                            PDF
+                          </span>
+                        ) : null}
                         {post.tags.map((tag) => (
                           <span
                             key={tag}

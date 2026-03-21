@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGuestbookEntries, getGuestbookCount, addGuestbookEntry } from "@/lib/db/data";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { getIpLocation } from "@/lib/ip-location";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -15,6 +17,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // 速率限制：每 IP 每分钟最多 5 次留言
+    const ip = getClientIp(request);
+    const { allowed, retryAfterMs } = checkRateLimit(`guestbook:${ip}`, 5, 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: `操作太频繁，请 ${Math.ceil(retryAfterMs / 1000)} 秒后再试` },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const nickname = (body.nickname || "").trim();
     const message = (body.message || "").trim();
@@ -26,7 +38,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "留言不能为空且不超过500字" }, { status: 400 });
     }
 
-    const entry = addGuestbookEntry(nickname, message);
+    // 异步查询 IP 归属地（不阻塞主流程）
+    const location = await getIpLocation(ip);
+
+    const entry = addGuestbookEntry(nickname, message, location);
     return NextResponse.json(entry);
   } catch {
     return NextResponse.json({ error: "提交失败" }, { status: 500 });

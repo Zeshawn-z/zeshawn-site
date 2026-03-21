@@ -20,12 +20,30 @@ export const dynamic = "force-dynamic";
 
 export function generateMetadata(): Metadata {
   const cfg = getDynamicSiteConfig();
+  const description = cfg.description || `${cfg.name} 的个人网站 - 项目、博客与技术分享`;
+  const siteUrl = cfg.url || "";
+
   return {
     title: {
       default: cfg.name,
       template: `%s | ${cfg.name}`,
     },
-    description: cfg.description || `${cfg.name} 的个人网站 - 项目、博客与技术分享`,
+    description,
+    metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+    openGraph: {
+      type: "website",
+      locale: "zh_CN",
+      siteName: cfg.name,
+      title: cfg.name,
+      description,
+      ...(siteUrl && { url: siteUrl }),
+    },
+    twitter: {
+      card: "summary",
+      title: cfg.name,
+      description,
+    },
+    alternates: siteUrl ? { canonical: siteUrl } : undefined,
   };
 }
 
