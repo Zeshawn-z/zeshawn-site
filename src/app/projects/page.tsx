@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+export const revalidate = 60; // 每 60 秒重新验证一次
 
 export default function ProjectsPage() {
   const projects = getProjects();

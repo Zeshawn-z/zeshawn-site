@@ -8,6 +8,8 @@ export interface PostAdmin {
   title: string;
   description: string;
   content: string;
+  contentType: "markdown" | "pdf";
+  pdfId?: string;
   date: string;
   tags: string[];
   published: boolean;
@@ -19,6 +21,7 @@ export interface GuestbookEntry {
   id: number;
   nickname: string;
   message: string;
+  location?: string;
   createdAt: string;
 }
 
@@ -29,6 +32,7 @@ export interface CommentAdmin {
   floor: number | null;
   nickname: string;
   content: string;
+  location?: string;
   createdAt: string;
 }
 

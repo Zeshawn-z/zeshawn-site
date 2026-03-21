@@ -21,6 +21,8 @@ export async function POST(request: NextRequest) {
       title: body.title,
       description: body.description || "",
       content: body.content || "",
+      contentType: body.contentType || "markdown",
+      pdfId: body.pdfId || undefined,
       date: body.date || new Date().toISOString().slice(0, 10),
       tags: body.tags || [],
       published: body.published ?? true,

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCommentsBySlug, addComment } from "@/lib/db/data";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { getIpLocation } from "@/lib/ip-location";
 
 // GET /api/comments?slug=xxx&page=1&order=asc
 export async function GET(request: NextRequest) {
@@ -18,6 +20,16 @@ export async function GET(request: NextRequest) {
 // POST /api/comments
 export async function POST(request: NextRequest) {
   try {
+    // 速率限制：每 IP 每分钟最多 10 次评论
+    const ip = getClientIp(request);
+    const { allowed, retryAfterMs } = checkRateLimit(`comments:${ip}`, 10, 60 * 1000);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: `操作太频繁，请 ${Math.ceil(retryAfterMs / 1000)} 秒后再试` },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
     const slug = (body.slug || "").trim();
     const nickname = (body.nickname || "").trim();
@@ -34,7 +46,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "评论不能为空且不超过1000字" }, { status: 400 });
     }
 
-    const comment = addComment(slug, nickname, content, parentId);
+    // 异步查询 IP 归属地
+    const location = await getIpLocation(ip);
+
+    const comment = addComment(slug, nickname, content, parentId, location);
     return NextResponse.json(comment);
   } catch {
     return NextResponse.json({ error: "提交失败" }, { status: 500 });

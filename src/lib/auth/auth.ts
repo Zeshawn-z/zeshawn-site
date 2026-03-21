@@ -10,6 +10,19 @@ const ADMIN_PASSWORD_HASH =
   bcrypt.hashSync("admin123", 10); // 默认密码: admin123
 const JWT_SECRET = process.env.JWT_SECRET || "zeshawn-site-jwt-secret-change-me";
 
+// 生产环境安全检测：使用默认凭证时打印醒目警告
+if (process.env.NODE_ENV === "production") {
+  const warnings: string[] = [];
+  if (!process.env.ADMIN_USERNAME) warnings.push("ADMIN_USERNAME 未设置，使用默认值 'admin'");
+  if (!process.env.ADMIN_PASSWORD_HASH) warnings.push("ADMIN_PASSWORD_HASH 未设置，使用默认密码 'admin123'");
+  if (!process.env.JWT_SECRET) warnings.push("JWT_SECRET 未设置，使用默认值");
+  if (warnings.length > 0) {
+    console.warn("\n⚠️  [安全警告] 管理后台正在使用默认凭证，请通过环境变量配置：");
+    warnings.forEach((w) => console.warn(`   - ${w}`));
+    console.warn("   请参考 README 第 4.1 节或 ops/server-config/systemd/zeshawn-next.service.d/env.conf.example\n");
+  }
+}
+
 export async function verifyCredentials(
   username: string,
   password: string
