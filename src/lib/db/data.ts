@@ -24,6 +24,7 @@ export function saveProjects(projects: Project[]) {
         link: p.link ?? null,
         github: p.github ?? null,
         image: p.image ?? null,
+        blogSlug: p.blogSlug ?? null,
         featured: p.featured ?? false,
         order: p.order ?? i,
       }).run();
@@ -40,6 +41,7 @@ function rowToProject(r: typeof schema.projects.$inferSelect): Project {
     link: r.link ?? undefined,
     github: r.github ?? undefined,
     image: r.image ?? undefined,
+    blogSlug: r.blogSlug ?? undefined,
     featured: r.featured,
     order: r.order,
   };
@@ -65,6 +67,7 @@ export function saveExperiences(experiences: Experience[]) {
         period: e.period,
         description: e.description,
         tags: e.tags ?? [],
+        blogSlug: e.blogSlug ?? null,
         order: e.order ?? i,
       }).run();
     });
@@ -79,6 +82,7 @@ function rowToExperience(r: typeof schema.experiences.$inferSelect): Experience 
     period: r.period,
     description: r.description,
     tags: r.tags,
+    blogSlug: r.blogSlug ?? undefined,
     order: r.order,
   };
 }
@@ -199,6 +203,7 @@ export function updatePost(
     date?: string;
     tags?: string[];
     published?: boolean;
+    commentsEnabled?: boolean;
   }
 ) {
   const db = getDb();
@@ -214,6 +219,7 @@ export function updatePost(
   if (post.date !== undefined) updates.date = post.date;
   if (post.tags !== undefined) updates.tags = post.tags;
   if (post.published !== undefined) updates.published = post.published;
+  if (post.commentsEnabled !== undefined) updates.commentsEnabled = post.commentsEnabled;
 
   db.update(schema.posts).set(updates).where(eq(schema.posts.id, id)).run();
 }
@@ -261,6 +267,7 @@ function rowToPost(r: typeof schema.posts.$inferSelect): BlogPost {
     published: r.published,
     contentType,
     pdfId: r.pdfId || undefined,
+    commentsEnabled: r.commentsEnabled,
   };
 }
 

@@ -33,6 +33,7 @@ export default function BlogComments({ slug }: { slug: string }) {
   const [order, setOrder] = useState<"asc" | "desc">("asc");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
 
   // 发表评论表单
   const [nickname, setNickname] = useState("");
@@ -63,6 +64,9 @@ export default function BlogComments({ slug }: { slug: string }) {
       setComments(data.comments || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
+      if (data.commentsEnabled !== undefined) {
+        setCommentsEnabled(data.commentsEnabled);
+      }
     } catch {
       setLoadError("评论加载失败，请刷新重试");
     } finally {
@@ -189,6 +193,12 @@ export default function BlogComments({ slug }: { slug: string }) {
       </div>
 
       {/* 发表评论表单 */}
+      {!commentsEnabled ? (
+        <div className="mb-8 rounded-lg border border-dashed border-border bg-card/50 px-4 py-6 text-center">
+          <MessageCircle size={20} className="mx-auto mb-2 text-muted" />
+          <p className="text-sm text-muted">评论功能暂时关闭</p>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="mb-8 rounded-lg border border-border bg-card p-4">
         <div className="mb-3">
           <label htmlFor="comment-nickname" className="sr-only">昵称</label>
@@ -230,6 +240,7 @@ export default function BlogComments({ slug }: { slug: string }) {
           </button>
         </div>
       </form>
+      )}
 
       {/* 评论列表 */}
       {loading ? (
@@ -274,6 +285,7 @@ export default function BlogComments({ slug }: { slug: string }) {
                     <span className="text-xs text-muted/70">来自{comment.location}</span>
                   )}
                   <span className="text-xs text-muted">{formatTime(comment.createdAt)}</span>
+                  {commentsEnabled && (
                   <button
                     onClick={() => {
                       setReplyTo(replyTo?.id === comment.id ? null : comment);
@@ -285,6 +297,7 @@ export default function BlogComments({ slug }: { slug: string }) {
                     <Reply size={12} />
                     回复
                   </button>
+                  )}
                 </div>
                 <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
                   {comment.content}

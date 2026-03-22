@@ -7,6 +7,7 @@ import {
   Loader2,
   User,
   MessageCircle,
+  Ban,
 } from "lucide-react";
 import ScrollReveal from "@/components/common/ScrollReveal";
 
@@ -27,6 +28,7 @@ export default function GuestbookPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [guestbookEnabled, setGuestbookEnabled] = useState(true);
 
   const loadEntries = useCallback(async () => {
     try {
@@ -35,6 +37,7 @@ export default function GuestbookPage() {
       if (!res.ok) throw new Error("加载失败");
       const data = await res.json();
       setEntries(data.entries || []);
+      setGuestbookEnabled(data.guestbookEnabled !== false);
     } catch {
       setLoadError("留言加载失败，请刷新页面重试");
     } finally {
@@ -102,68 +105,77 @@ export default function GuestbookPage() {
 
       {/* Submit Form */}
       <section className="mb-10">
-        <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-card p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <MessageCircle size={16} className="text-accent" />
-            <span className="text-sm font-medium">写下留言</span>
-          </div>
-
-          {error && (
-            <div className="mb-4 rounded-lg border border-red-200/50 bg-red-50/50 px-4 py-2.5 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-950/30 dark:text-red-400">
-              {error}
+        {guestbookEnabled ? (
+          <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-card p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <MessageCircle size={16} className="text-accent" />
+              <span className="text-sm font-medium">写下留言</span>
             </div>
-          )}
 
-          {success && (
-            <div className="mb-4 rounded-lg border border-green-200/50 bg-green-50/50 px-4 py-2.5 text-sm text-green-600 dark:border-green-500/20 dark:bg-green-950/30 dark:text-green-400">
-              留言成功！感谢你的留言 🎉
-            </div>
-          )}
-
-          <div className="mb-3">
-            <label htmlFor="guestbook-nickname" className="sr-only">昵称</label>
-            <div className="flex items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2.5 transition-colors focus-within:border-accent">
-              <User size={14} className="shrink-0 text-muted" />
-              <input
-                id="guestbook-nickname"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="你的昵称"
-                maxLength={50}
-                className="w-full bg-transparent text-sm outline-none placeholder:text-muted/50"
-              />
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <label htmlFor="guestbook-message" className="sr-only">留言内容</label>
-            <textarea
-              id="guestbook-message"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="写点什么吧..."
-              maxLength={500}
-              rows={3}
-              className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent placeholder:text-muted/50"
-            />
-            <div className="mt-1 text-right text-xs text-muted">
-              {message.length}/500
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-all hover:opacity-90 disabled:opacity-50"
-          >
-            {submitting ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <Send size={14} />
+            {error && (
+              <div className="mb-4 rounded-lg border border-red-200/50 bg-red-50/50 px-4 py-2.5 text-sm text-red-600 dark:border-red-500/20 dark:bg-red-950/30 dark:text-red-400">
+                {error}
+              </div>
             )}
-            {submitting ? "提交中..." : "发送留言"}
-          </button>
-        </form>
+
+            {success && (
+              <div className="mb-4 rounded-lg border border-green-200/50 bg-green-50/50 px-4 py-2.5 text-sm text-green-600 dark:border-green-500/20 dark:bg-green-950/30 dark:text-green-400">
+                留言成功！感谢你的留言 🎉
+              </div>
+            )}
+
+            <div className="mb-3">
+              <label htmlFor="guestbook-nickname" className="sr-only">昵称</label>
+              <div className="flex items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2.5 transition-colors focus-within:border-accent">
+                <User size={14} className="shrink-0 text-muted" />
+                <input
+                  id="guestbook-nickname"
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="你的昵称"
+                  maxLength={50}
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-muted/50"
+                />
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label htmlFor="guestbook-message" className="sr-only">留言内容</label>
+              <textarea
+                id="guestbook-message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="写点什么吧..."
+                maxLength={500}
+                rows={3}
+                className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none transition-colors focus:border-accent placeholder:text-muted/50"
+              />
+              <div className="mt-1 text-right text-xs text-muted">
+                {message.length}/500
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex items-center gap-2 rounded-lg bg-foreground px-5 py-2.5 text-sm font-medium text-background transition-all hover:opacity-90 disabled:opacity-50"
+            >
+              {submitting ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Send size={14} />
+              )}
+              {submitting ? "提交中..." : "发送留言"}
+            </button>
+          </form>
+        ) : (
+          <div className="rounded-xl border border-border bg-card p-5">
+            <div className="flex items-center gap-3 text-muted">
+              <Ban size={18} />
+              <span className="text-sm">留言板暂时关闭，仅可查看历史留言。</span>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Entries */}

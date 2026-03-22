@@ -1,10 +1,9 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  ExternalLink,
-  Github,
   Code2,
   BookOpen,
+  Github,
   Calendar,
   Clock,
 } from "lucide-react";
@@ -16,6 +15,8 @@ import ScrollReveal from "@/components/common/ScrollReveal";
 import GlowCard from "@/components/common/GlowCard";
 import MagneticButton from "@/components/common/MagneticButton";
 import SpotlightSection from "@/components/common/SpotlightSection";
+import ProjectCardLinks from "@/components/projects/ProjectCardLinks";
+
 
 export const dynamic = "force-dynamic";
 
@@ -123,56 +124,56 @@ export default function Home() {
             </div>
 
             <div className="grid gap-4">
-              {featuredProjects.map((project, i) => (
-                <ScrollReveal key={project.id} delay={i * 100}>
-                  <GlowCard>
-                    <div className="p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <h3 className="font-medium">{project.title}</h3>
-                          <p className="mt-1.5 text-sm leading-relaxed text-muted">
-                            {project.description}
-                          </p>
-                          <div className="mt-3 flex flex-wrap gap-1.5">
-                            {project.tags.map((tag) => (
-                              <span
-                                key={tag}
-                                className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs text-accent"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          {project.github && (
-                            <a
-                              href={project.github}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-md p-1.5 text-muted transition-colors hover:text-accent"
-                              aria-label="GitHub"
-                            >
-                              <Github size={16} />
-                            </a>
-                          )}
-                          {project.link && (
-                            <a
-                              href={project.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-md p-1.5 text-muted transition-colors hover:text-accent"
-                              aria-label="External link"
-                            >
-                              <ExternalLink size={16} />
-                            </a>
-                          )}
-                        </div>
+              {featuredProjects.map((project, i) => {
+                const cardContent = (insideLink: boolean) => (
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">{project.title}</h3>
+                        {project.blogSlug && (
+                          <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 dark:text-blue-400">
+                            <BookOpen size={10} className="mr-0.5 inline" />
+                            博客
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                        {project.description}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {project.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs text-accent"
+                          >
+                            {tag}
+                          </span>
+                        ))}
                       </div>
                     </div>
+                    <ProjectCardLinks
+                      blogSlug={project.blogSlug}
+                      github={project.github}
+                      link={project.link}
+                      insideLink={insideLink}
+                    />
+                  </div>
+                );
+
+                return (
+                <ScrollReveal key={project.id} delay={i * 100}>
+                  <GlowCard>
+                    {project.blogSlug ? (
+                      <Link href={`/blog/${project.blogSlug}`} className="block cursor-pointer p-5">
+                        {cardContent(true)}
+                      </Link>
+                    ) : (
+                      <div className="p-5">{cardContent(false)}</div>
+                    )}
                   </GlowCard>
                 </ScrollReveal>
-              ))}
+                );
+              })}
             </div>
           </section>
         </ScrollReveal>

@@ -50,6 +50,7 @@ export default function PostsEditor({ posts, setPosts, onViewComments }: { posts
           date: editing.date,
           tags: editing.tags,
           published: editing.published,
+          commentsEnabled: editing.commentsEnabled,
         }),
       });
       setPosts(posts.map((p) => (p.id === editing.id ? editing : p)));
@@ -134,6 +135,15 @@ export default function PostsEditor({ posts, setPosts, onViewComments }: { posts
                 PDF 文章
               </span>
             )}
+            <button
+              onClick={() => setEditing({ ...editing, commentsEnabled: !editing.commentsEnabled })}
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${editing.commentsEnabled !== false ? "border-accent/30 text-accent" : "border-border text-muted"
+                }`}
+              title={editing.commentsEnabled !== false ? "评论已开启" : "评论已关闭"}
+            >
+              <MessageCircle size={14} />
+              {editing.commentsEnabled !== false ? "评论开" : "评论关"}
+            </button>
             <button
               onClick={() => togglePublish(editing)}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${editing.published ? "border-green-500/30 text-green-600 dark:text-green-400" : "border-border text-muted"

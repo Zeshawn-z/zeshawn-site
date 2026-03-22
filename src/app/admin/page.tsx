@@ -336,8 +336,8 @@ export default function AdminDashboard() {
             </h2>
           )}
           {tab === "posts" && <PostsEditor posts={posts} setPosts={setPosts} onViewComments={(slug) => { setCommentFilterSlug(slug); setTab("comments"); }} />}
-          {tab === "projects" && <ProjectsEditor projects={projects} onChange={setProjects} />}
-          {tab === "experiences" && <ExperiencesEditor experiences={experiences} onChange={setExperiences} />}
+          {tab === "projects" && <ProjectsEditor projects={projects} onChange={setProjects} posts={posts} />}
+          {tab === "experiences" && <ExperiencesEditor experiences={experiences} onChange={setExperiences} posts={posts} />}
           {tab === "skills" && <SkillsEditor skills={skills} onChange={setSkills} />}
           {tab === "comments" && <CommentsManager comments={commentsData} setComments={setCommentsData} filterSlug={commentFilterSlug} setFilterSlug={setCommentFilterSlug} />}
           {tab === "guestbook" && <GuestbookManager entries={guestbookEntries} setEntries={setGuestbookEntries} />}
