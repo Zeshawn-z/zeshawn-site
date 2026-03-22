@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Mail, User, Briefcase, Wrench, MapPin } from "lucide-react";
+import Link from "next/link";
+import { Mail, User, Briefcase, Wrench, MapPin, BookOpen } from "lucide-react";
 import { getDynamicSiteConfig } from "@/lib/config/site-config-dynamic";
 import { getExperiences, getSkills } from "@/lib/db/data";
 import ScrollReveal from "@/components/common/ScrollReveal";
@@ -96,7 +97,18 @@ export default function AboutPage() {
                   <div className="relative">
                     <div className="absolute -left-[31px] top-1 h-3 w-3 rounded-full border-2 border-accent bg-background" />
                     <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                      <h3 className="font-medium">{exp.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium">{exp.title}</h3>
+                        {exp.blogSlug && (
+                          <Link
+                            href={`/blog/${exp.blogSlug}`}
+                            className="inline-flex items-center gap-0.5 rounded-full bg-blue-500/10 px-2 py-0.5 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-500/20 dark:text-blue-400"
+                          >
+                            <BookOpen size={10} />
+                            博客
+                          </Link>
+                        )}
+                      </div>
                       <span className="text-sm text-muted">{exp.period}</span>
                     </div>
                     <p className="mt-0.5 text-sm font-medium text-accent">

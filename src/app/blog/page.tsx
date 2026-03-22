@@ -25,7 +25,7 @@ export default function BlogPage() {
           <h1 className="text-3xl font-bold tracking-tight">博客</h1>
         </div>
         <p className="mt-3 text-muted">
-          记录技术探索、项目实践和个人思考。支持 Markdown 和 MDX 格式。
+          记录技术探索、项目实践和个人思考。
         </p>
       </section>
 

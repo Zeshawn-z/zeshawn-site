@@ -104,6 +104,9 @@ export function getDb() {
     `ALTER TABLE posts ADD COLUMN content_type TEXT NOT NULL DEFAULT 'markdown'`,
     `ALTER TABLE posts ADD COLUMN pdf_id TEXT`,
     `ALTER TABLE guestbook ADD COLUMN location TEXT`,
+    `ALTER TABLE projects ADD COLUMN blog_slug TEXT`,
+    `ALTER TABLE experiences ADD COLUMN blog_slug TEXT`,
+    `ALTER TABLE posts ADD COLUMN comments_enabled INTEGER NOT NULL DEFAULT 1`,
   ]) {
     try { sqlite.exec(col); } catch { /* column already exists */ }
   }

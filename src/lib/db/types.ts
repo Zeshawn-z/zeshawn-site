@@ -6,6 +6,7 @@ export interface Project {
   link?: string;
   github?: string;
   image?: string;
+  blogSlug?: string;
   featured?: boolean;
   order?: number;
 }
@@ -20,6 +21,7 @@ export interface BlogPost {
   published?: boolean;
   contentType?: "markdown" | "pdf";
   pdfId?: string;
+  commentsEnabled?: boolean;
 }
 
 export interface Experience {
@@ -29,6 +31,7 @@ export interface Experience {
   period: string;
   description: string;
   tags?: string[];
+  blogSlug?: string;
   order?: number;
 }
 
