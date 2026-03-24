@@ -209,3 +209,23 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
+
+/* ── 表格暗色模式适配 ────────────────────────────────────── */
+.dark .markdown-body table {
+  background-color: transparent;
+}
+
+.dark .markdown-body table tr {
+  background-color: var(--background);
+  border-color: var(--border);
+}
+
+.dark .markdown-body table tr:nth-child(2n) {
+  background-color: var(--card);
+}
+
+.dark .markdown-body table th,
+.dark .markdown-body table td {
+  border-color: var(--border);
+  color: var(--foreground);
+}

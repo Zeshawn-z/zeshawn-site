@@ -8,9 +8,10 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  tag:
     runs-on: ubuntu-latest
-
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,10 +21,34 @@ jobs:
       - name: Generate version number
         id: version
         run: |
-          # 日期版本号: v2026.03.17.<run_number>
-          VERSION="v$(date -u +%Y.%m.%d).${{ github.run_number }}"
+          # 日期版本号: 26.3.25.<num> (每天从 1 开始)
+          DATE_PREFIX=$(date -u +'%y.%-m.%-d')
+          
+          # 查找今天已有的最大版本 Tag
+          LAST_TAG=$(git tag --list "${DATE_PREFIX}.*" --sort=-v:refname | head -n 1)
+          
+          if [ -z "$LAST_TAG" ]; then
+            BUILD_NUM=1
+          else
+            # 提取版本号中最后一个点后面的数字
+            LAST_NUM=${LAST_TAG##*.}
+            # 简单校验是否为数字
+            if [[ "$LAST_NUM" =~ ^[0-9]+$ ]]; then
+              BUILD_NUM=$((LAST_NUM + 1))
+            else
+              BUILD_NUM=1
+            fi
+          fi
+          
+          VERSION="${DATE_PREFIX}.${BUILD_NUM}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Generated version: $VERSION"
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -51,7 +76,21 @@ jobs:
         with:
           name: zeshawn-site
           path: zeshawn-site.tar.gz
-          retention-days: 30
+          retention-days: 1
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [tag, build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: zeshawn-site
 
       - name: Generate changelog
         id: changelog
@@ -70,12 +109,12 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: ${{ steps.version.outputs.version }}
+          tag_name: ${{ needs.tag.outputs.version }}
+          name: ${{ needs.tag.outputs.version }}
           body: |
             ## 🚀 自动构建发布
 
-            **版本**: `${{ steps.version.outputs.version }}`
+            **版本**: `${{ needs.tag.outputs.version }}`
             **构建时间**: ${{ github.event.head_commit.timestamp }}
             **触发提交**: ${{ github.event.head_commit.message }}
 
