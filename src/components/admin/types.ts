@@ -13,6 +13,7 @@ export interface PostAdmin {
   date: string;
   tags: string[];
   published: boolean;
+  commentsEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -9,6 +9,7 @@ export const projects = sqliteTable("projects", {
   link: text("link"),
   github: text("github"),
   image: text("image"),
+  blogSlug: text("blog_slug"),
   featured: integer("featured", { mode: "boolean" }).notNull().default(false),
   order: integer("order").notNull().default(999),
 });
@@ -20,6 +21,7 @@ export const experiences = sqliteTable("experiences", {
   period: text("period").notNull().default(""),
   description: text("description").notNull().default(""),
   tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
+  blogSlug: text("blog_slug"),
   order: integer("order").notNull().default(999),
 });
 
@@ -41,6 +43,7 @@ export const posts = sqliteTable("posts", {
   date: text("date").notNull().default(""),
   tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
   published: integer("published", { mode: "boolean" }).notNull().default(true),
+  commentsEnabled: integer("comments_enabled", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });

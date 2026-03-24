@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGuestbookEntries, getGuestbookCount, addGuestbookEntry } from "@/lib/db/data";
+import { getGuestbookEntries, getGuestbookCount, addGuestbookEntry, getSiteConfig } from "@/lib/db/data";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getIpLocation } from "@/lib/ip-location";
 
@@ -11,12 +11,20 @@ export async function GET(request: NextRequest) {
 
   const entries = getGuestbookEntries(limit, offset);
   const total = getGuestbookCount();
+  const cfg = getSiteConfig();
+  const guestbookEnabled = cfg["guestbook.enabled"] !== "false";
 
-  return NextResponse.json({ entries, total, page, pages: Math.ceil(total / limit) });
+  return NextResponse.json({ entries, total, page, pages: Math.ceil(total / limit), guestbookEnabled });
 }
 
 export async function POST(request: NextRequest) {
   try {
+    // 检查留言板开关
+    const cfg = getSiteConfig();
+    if (cfg["guestbook.enabled"] === "false") {
+      return NextResponse.json({ error: "留言板已关闭" }, { status: 403 });
+    }
+
     // 速率限制：每 IP 每分钟最多 5 次留言
     const ip = getClientIp(request);
     const { allowed, retryAfterMs } = checkRateLimit(`guestbook:${ip}`, 5, 60 * 1000);
