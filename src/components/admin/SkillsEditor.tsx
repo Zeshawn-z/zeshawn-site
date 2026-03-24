@@ -2,7 +2,7 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import type { SkillGroup } from "./types";
-import { FieldInput } from "./FormFields";
+import { FieldInput, FieldCommaInput } from "./FormFields";
 
 export default function SkillsEditor({ skills, onChange }: { skills: SkillGroup[]; onChange: (s: SkillGroup[]) => void }) {
   const addGroup = () => {
@@ -26,7 +26,12 @@ export default function SkillsEditor({ skills, onChange }: { skills: SkillGroup[
             <input value={group.name} onChange={(e) => updateGroup(group.id, { name: e.target.value })} className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium outline-none focus:border-accent" />
             <button onClick={() => removeGroup(group.id)} className="rounded p-1 text-muted transition-colors hover:text-red-500"><Trash2 size={14} /></button>
           </div>
-          <FieldInput label="技能（逗号分隔）" value={group.skills.join(", ")} onChange={(v) => updateGroup(group.id, { skills: v.split(",").map((t) => t.trim()).filter(Boolean) })} placeholder="React, TypeScript, Next.js" />
+          <FieldCommaInput
+            label="技能（逗号分隔）"
+            values={group.skills}
+            onParsedChange={(skills) => updateGroup(group.id, { skills })}
+            placeholder="React, TypeScript, Next.js"
+          />
         </div>
       ))}
       <button onClick={addGroup} className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-sm text-muted transition-colors hover:border-accent hover:text-accent">

@@ -137,7 +137,7 @@ export default function Home() {
                           </span>
                         )}
                       </div>
-                      <p className="mt-1.5 text-sm leading-relaxed text-muted">
+                      <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-muted">
                         {project.description}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-1.5">

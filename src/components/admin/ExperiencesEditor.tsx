@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, ChevronDown, ChevronUp, GripVertical, BookOpen, X } from "lucide-react";
 import type { Experience, PostAdmin } from "./types";
-import { FieldInput, FieldTextarea } from "./FormFields";
+import { FieldInput, FieldTextarea, FieldCommaInput } from "./FormFields";
 
 interface ExperiencesEditorProps {
   experiences: Experience[];
@@ -76,7 +76,11 @@ export default function ExperiencesEditor({ experiences, onChange, posts = [] }:
               </div>
               <FieldInput label="时间段" value={exp.period} onChange={(v) => updateExperience(exp.id, { period: v })} placeholder="如：2022 - 2024" />
               <FieldTextarea label="描述" value={exp.description} onChange={(v) => updateExperience(exp.id, { description: v })} />
-              <FieldInput label="标签（逗号分隔）" value={(exp.tags || []).join(", ")} onChange={(v) => updateExperience(exp.id, { tags: v.split(",").map((t) => t.trim()).filter(Boolean) })} />
+              <FieldCommaInput
+                label="标签（逗号分隔）"
+                values={exp.tags || []}
+                onParsedChange={(tags) => updateExperience(exp.id, { tags })}
+              />
 
               {/* 关联博客 - 下拉选择 */}
               <div>

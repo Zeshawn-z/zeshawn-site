@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, ChevronDown, ChevronUp, GripVertical, BookOpen, X } from "lucide-react";
 import type { Project, PostAdmin } from "./types";
-import { FieldInput, FieldTextarea } from "./FormFields";
+import { FieldInput, FieldTextarea, FieldCommaInput } from "./FormFields";
 
 interface ProjectsEditorProps {
   projects: Project[];
@@ -77,7 +77,11 @@ export default function ProjectsEditor({ projects, onChange, posts = [] }: Proje
             <div className="space-y-3 border-t border-border px-4 py-4">
               <FieldInput label="标题" value={project.title} onChange={(v) => updateProject(project.id, { title: v })} />
               <FieldTextarea label="描述" value={project.description} onChange={(v) => updateProject(project.id, { description: v })} />
-              <FieldInput label="标签（逗号分隔）" value={project.tags.join(", ")} onChange={(v) => updateProject(project.id, { tags: v.split(",").map((t) => t.trim()).filter(Boolean) })} />
+              <FieldCommaInput
+                label="标签（逗号分隔）"
+                values={project.tags}
+                onParsedChange={(tags) => updateProject(project.id, { tags })}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <FieldInput label="项目链接" value={project.link || ""} onChange={(v) => updateProject(project.id, { link: v || undefined })} placeholder="https://..." />
                 <FieldInput label="GitHub 链接" value={project.github || ""} onChange={(v) => updateProject(project.id, { github: v || undefined })} placeholder="https://github.com/..." />
