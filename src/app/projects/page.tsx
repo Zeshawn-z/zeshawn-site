@@ -53,7 +53,7 @@ export default function ProjectsPage() {
                         </span>
                       )}
                     </div>
-                    <p className="mt-2 text-sm leading-relaxed text-muted">
+                    <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted">
                       {project.description}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-1.5">

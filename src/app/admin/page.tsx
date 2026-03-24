@@ -29,6 +29,13 @@ import ExperiencesEditor from "@/components/admin/ExperiencesEditor";
 import SkillsEditor from "@/components/admin/SkillsEditor";
 import ImagesManager from "@/components/admin/ImagesManager";
 
+function parseCommaSeparated(input: string): string[] {
+  return input
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -105,21 +112,34 @@ export default function AdminDashboard() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const normalizedProjects = projects.map((p) => ({
+        ...p,
+        tags: parseCommaSeparated((p.tags || []).join(",")),
+      }));
+      const normalizedExperiences = experiences.map((e) => ({
+        ...e,
+        tags: parseCommaSeparated((e.tags || []).join(",")),
+      }));
+      const normalizedSkills = skills.map((s) => ({
+        ...s,
+        skills: parseCommaSeparated((s.skills || []).join(",")),
+      }));
+
       await Promise.all([
         fetch("/api/admin/projects", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(projects),
+          body: JSON.stringify(normalizedProjects),
         }),
         fetch("/api/admin/experiences", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(experiences),
+          body: JSON.stringify(normalizedExperiences),
         }),
         fetch("/api/admin/skills", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(skills),
+          body: JSON.stringify(normalizedSkills),
         }),
         fetch("/api/admin/config", {
           method: "PUT",

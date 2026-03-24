@@ -114,7 +114,7 @@ export default function AboutPage() {
                     <p className="mt-0.5 text-sm font-medium text-accent">
                       {exp.company}
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-muted">
+                    <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted">
                       {exp.description}
                     </p>
                     {exp.tags && exp.tags.length > 0 && (
