@@ -23,13 +23,20 @@ export function generateMetadata(): Metadata {
   const description = cfg.description || `${cfg.name} 的个人网站 - 项目、博客与技术分享`;
   const siteUrl = cfg.url || "";
 
+  let metadataBase: URL | undefined;
+  try {
+    metadataBase = siteUrl ? new URL(siteUrl) : undefined;
+  } catch {
+    metadataBase = undefined;
+  }
+
   return {
     title: {
       default: cfg.name,
       template: `%s | ${cfg.name}`,
     },
     description,
-    metadataBase: siteUrl ? new URL(siteUrl) : undefined,
+    metadataBase,
     openGraph: {
       type: "website",
       locale: "zh_CN",
