@@ -128,7 +128,7 @@ jobs:
           cp scripts/server-init.sh release-scripts/server-init.sh
           cp scripts/server-deploy.sh release-scripts/server-deploy.sh
           cp scripts/deploy-release.bat release-scripts/deploy-release.bat
-          cp scripts/deploy-oneclick.bat release-scripts/deploy-oneclick.bat
+          cp scripts/deploy-oneclick.ps1 release-scripts/deploy-oneclick.ps1
 
       - name: Upload scripts artifact
         uses: actions/upload-artifact@v4
@@ -196,12 +196,12 @@ jobs:
             - `server-init.sh` — 服务器初始化脚本
             - `server-deploy.sh` — 服务器部署/更新脚本
             - `deploy-release.bat` — 本地部署到服务器脚本（通过 Release）
-            - `deploy-oneclick.bat` — 一键初始化+部署+启动脚本
+            - `deploy-oneclick.ps1` — 一键初始化+部署+启动脚本
           files: |
             zeshawn-site.tar.gz
             zeshawn-site-windows.zip
             server-init.sh
             server-deploy.sh
             deploy-release.bat
-            deploy-oneclick.bat
+            deploy-oneclick.ps1
           generate_release_notes: false
