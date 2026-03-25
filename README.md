@@ -12,8 +12,8 @@
 
 如果你是第一次部署，直接用一键脚本：
 
-```bat
-./scripts/deploy-oneclick.bat
+```powershell
+.\scripts\deploy-oneclick.ps1
 ```
 
 脚本会通过标准输入逐项询问：
@@ -31,8 +31,8 @@
 
 1. 服务器下载 Release 产物
 2. 上传并执行 `server-deploy.sh`（部署文件并处理 data 链接）
-3. 上传并执行 `server-init.sh`（初始化 nginx/systemd/certbot）
-4. 自动生成 `ADMIN_PASSWORD_HASH` 与 `JWT_SECRET` 并写入 systemd 环境变量
+3. 上传并执行 `server-init.sh`（初始化 nginx/systemd/certbot，并安装 nvm + Node 20）
+4. 在服务器端自动生成 `ADMIN_PASSWORD_HASH` 与 `JWT_SECRET` 并写入 systemd 环境变量
 5. 启动并验证服务
 
 ### 1.1 常见错误回复（先看这里）
@@ -124,9 +124,11 @@ bash scripts/server-deploy.sh /var/www/zeshawn-site zeshawn-site.tar.gz zeshawn-
 
 1. 安装 nginx + certbot
 2. 写入 systemd 服务并启动
-3. 写入 nginx 配置并 reload
-4. 申请 HTTPS 证书
-5. 再次校验服务状态
+3. 安装 nvm + Node 运行时（Node 20，必要时兼容 Node 18）
+4. 在服务器端生成后台密码哈希和 JWT（如提供管理员输入）
+5. 写入 nginx 配置并 reload
+6. 申请 HTTPS 证书
+7. 再次校验服务状态
 
 手动执行示例：
 
@@ -142,7 +144,7 @@ sudo bash scripts/server-init.sh example.com admin@example.com /var/www/zeshawn-
 
 1. 默认使用本机 SSH Host 别名（如 `ali`）。
 2. 从 GitHub Release 下载产物并部署。
-3. 不包含首次初始化引导（首次部署请用 `deploy-oneclick.bat`）。
+3. 不包含首次初始化引导（首次部署请用 `deploy-oneclick.ps1`）。
 
 ## 4. 数据与隐私
 
@@ -170,7 +172,7 @@ src/
   lib/                  # 数据访问、鉴权、配置
 scripts/
   migrate.ts            # 数据迁移脚本
-  deploy-oneclick.bat   # 一键初始化+部署+启动（交互式）
+  deploy-oneclick.ps1   # 一键初始化+部署+启动（交互式）
   deploy-release.bat    # 个人更新脚本（hostname 场景）
   server-deploy.sh      # 服务器部署/更新
   server-init.sh        # 服务器初始化

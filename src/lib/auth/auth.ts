@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 
@@ -28,6 +29,20 @@ export async function verifyCredentials(
   password: string
 ): Promise<boolean> {
   if (username !== ADMIN_USERNAME) return false;
+
+  // Support both legacy bcrypt hashes and new scrypt hashes generated on server-init.
+  if (ADMIN_PASSWORD_HASH.startsWith("scrypt$")) {
+    const parts = ADMIN_PASSWORD_HASH.split("$");
+    if (parts.length !== 3) return false;
+
+    const salt = parts[1];
+    const expectedHex = parts[2];
+    const actual = crypto.scryptSync(password, salt, 64);
+    const expected = Buffer.from(expectedHex, "hex");
+    if (actual.length !== expected.length) return false;
+    return crypto.timingSafeEqual(actual, expected);
+  }
+
   return bcrypt.compareSync(password, ADMIN_PASSWORD_HASH);
 }
 
