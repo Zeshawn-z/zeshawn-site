@@ -1,16 +1,45 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Save, Loader2, Eye, EyeOff, Edit3, MessageCircle, ArrowLeft, FileText, Upload, FileCheck } from "lucide-react";
 import type { PostAdmin } from "./types";
-import { FieldInput } from "./FormFields";
+import { FieldCommaInput, FieldInput } from "./FormFields";
 import MdEditor from "@/components/admin/MdEditor";
+
+function parseCommaSeparated(input: string): string[] {
+  return input
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 export default function PostsEditor({ posts, setPosts, onViewComments }: { posts: PostAdmin[]; setPosts: (p: PostAdmin[]) => void; onViewComments: (slug: string) => void }) {
   const [editing, setEditing] = useState<PostAdmin | null>(null);
   const [savingPost, setSavingPost] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "markdown" | "pdf">("all");
+  const [tagFilter, setTagFilter] = useState<string>("all");
   const pdfInputRef = useRef<HTMLInputElement>(null);
+
+  const allTags = useMemo(() => {
+    return Array.from(new Set(posts.flatMap((post) => post.tags || []))).sort((a, b) => a.localeCompare(b, "zh-CN"));
+  }, [posts]);
+
+  const filteredPosts = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return posts.filter((post) => {
+      const typeMatched = typeFilter === "all" || post.contentType === typeFilter;
+      const tagMatched = tagFilter === "all" || post.tags.includes(tagFilter);
+      const textMatched =
+        q.length === 0 ||
+        post.title.toLowerCase().includes(q) ||
+        post.slug.toLowerCase().includes(q) ||
+        post.description.toLowerCase().includes(q) ||
+        post.tags.some((tag) => tag.toLowerCase().includes(q));
+      return typeMatched && tagMatched && textMatched;
+    });
+  }, [posts, query, typeFilter, tagFilter]);
 
   const createPost = async (contentType: "markdown" | "pdf" = "markdown") => {
     const slug = "new-post-" + Date.now();
@@ -48,12 +77,17 @@ export default function PostsEditor({ posts, setPosts, onViewComments }: { posts
           contentType: editing.contentType,
           pdfId: editing.pdfId || null,
           date: editing.date,
-          tags: editing.tags,
+          tags: parseCommaSeparated((editing.tags || []).join(",")),
           published: editing.published,
           commentsEnabled: editing.commentsEnabled,
         }),
       });
-      setPosts(posts.map((p) => (p.id === editing.id ? editing : p)));
+      const normalizedEditing = {
+        ...editing,
+        tags: parseCommaSeparated((editing.tags || []).join(",")),
+      };
+      setPosts(posts.map((p) => (p.id === editing.id ? normalizedEditing : p)));
+      setEditing(normalizedEditing);
     } finally {
       setSavingPost(false);
     }
@@ -170,10 +204,10 @@ export default function PostsEditor({ posts, setPosts, onViewComments }: { posts
         <FieldInput label="摘要" value={editing.description} onChange={(v) => setEditing({ ...editing, description: v })} />
         <div className="grid gap-4 sm:grid-cols-2">
           <FieldInput label="日期" value={editing.date} onChange={(v) => setEditing({ ...editing, date: v })} placeholder="YYYY-MM-DD" />
-          <FieldInput
+          <FieldCommaInput
             label="标签（逗号分隔）"
-            value={editing.tags.join(", ")}
-            onChange={(v) => setEditing({ ...editing, tags: v.split(",").map((t) => t.trim()).filter(Boolean) })}
+            values={editing.tags}
+            onParsedChange={(tags) => setEditing({ ...editing, tags })}
           />
         </div>
 
@@ -244,7 +278,62 @@ export default function PostsEditor({ posts, setPosts, onViewComments }: { posts
   // List view
   return (
     <div className="space-y-3">
-      {posts.map((post) => (
+      <div className="rounded-lg border border-border bg-card p-3">
+        <div className="grid gap-2 sm:grid-cols-3">
+          <FieldInput
+            label="搜索"
+            value={query}
+            onChange={setQuery}
+            placeholder="标题 / slug / 描述 / 标签"
+          />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">类型筛选</label>
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value as "all" | "markdown" | "pdf")}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
+            >
+              <option value="all">全部</option>
+              <option value="markdown">Markdown</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">标签索引</label>
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
+            >
+              <option value="all">全部标签</option>
+              {allTags.map((tag) => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {allTags.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setTagFilter("all")}
+              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${tagFilter === "all" ? "bg-accent text-white" : "bg-accent/10 text-accent"}`}
+            >
+              全部
+            </button>
+            {allTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => setTagFilter(tag)}
+                className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${tagFilter === tag ? "bg-accent text-white" : "bg-accent/10 text-accent"}`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {filteredPosts.map((post) => (
         <div key={post.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -274,6 +363,11 @@ export default function PostsEditor({ posts, setPosts, onViewComments }: { posts
           </div>
         </div>
       ))}
+      {filteredPosts.length === 0 && (
+        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
+          当前筛选条件下没有文章
+        </div>
+      )}
       <div className="flex gap-2">
         <button
           onClick={() => createPost("markdown")}

@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { BookOpen, PenLine, Calendar, Clock, FileText } from "lucide-react";
+import { PenLine } from "lucide-react";
 import { getAllPosts } from "@/lib/db/data";
-import ScrollReveal from "@/components/common/ScrollReveal";
-import GlowCard from "@/components/common/GlowCard";
 import SpotlightSection from "@/components/common/SpotlightSection";
+import BlogIndex from "@/components/blog/BlogIndex";
 
 export const metadata: Metadata = {
   title: "博客",
@@ -31,62 +29,7 @@ export default function BlogPage() {
 
       <SpotlightSection>
         <section className="pb-16">
-          {posts.length > 0 ? (
-            <div className="grid gap-4">
-              {posts.map((post, i) => (
-                <ScrollReveal key={post.slug} delay={i * 80}>
-                  <GlowCard>
-                    <Link
-                      href={`/blog/${post.slug}`}
-                      className="block p-5"
-                    >
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                        <h2 className="text-base font-medium">
-                          {post.title}
-                        </h2>
-                      </div>
-                      <p className="mt-1.5 text-sm leading-relaxed text-muted">
-                        {post.description}
-                      </p>
-                      <div className="mt-3 flex flex-wrap items-center gap-3">
-                        <span className="inline-flex items-center gap-1 text-xs text-muted">
-                          <Calendar size={12} />
-                          {post.date}
-                        </span>
-                        {post.readingTime ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-muted">
-                            <Clock size={12} />
-                            {post.readingTime} 阅读
-                          </span>
-                        ) : post.contentType === "pdf" ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
-                            <FileText size={12} />
-                            PDF
-                          </span>
-                        ) : null}
-                        {post.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full bg-accent/10 px-2.5 py-0.5 text-xs text-accent"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    </Link>
-                  </GlowCard>
-                </ScrollReveal>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-lg border border-dashed border-border p-12 text-center">
-              <BookOpen size={28} className="mx-auto mb-3 text-muted" />
-              <p className="text-muted">暂无博客文章</p>
-              <p className="mt-2 text-sm text-muted">
-                在管理后台发布你的第一篇文章吧。
-              </p>
-            </div>
-          )}
+          <BlogIndex posts={posts} />
         </section>
       </SpotlightSection>
     </div>
