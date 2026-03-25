@@ -48,3 +48,4 @@ data/*.db-wal
 next-env.d.ts
 test
 local
+backups

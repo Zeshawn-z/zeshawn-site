@@ -4,6 +4,7 @@ setlocal EnableExtensions
 set "REMOTE_HOST=ali"
 set "REMOTE_APP=/var/www/zeshawn-site"
 set "ARCHIVE=zeshawn-site.tar.gz"
+set "REMOTE_SCRIPT=server-deploy.sh"
 set "REPO=Zeshawn-z/zeshawn-site"
 set "LOCAL_PROXY_HOST=127.0.0.1"
 set "LOCAL_PROXY_PORT=7890"
@@ -32,17 +33,17 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [2/3] Extracting archive and linking data directory...
-ssh %REMOTE_HOST% "set -euo pipefail; ts=$(date +%Y%m%d-%H%M%S); backup_dir=%REMOTE_APP%/backups/data-$ts; mkdir -p $backup_dir; if [ -d %REMOTE_APP%/data ]; then cp -a %REMOTE_APP%/data/. $backup_dir/; fi; echo backup_data_dir=$backup_dir; service_wd=$(systemctl show zeshawn-next -p WorkingDirectory --value 2>/dev/null || true); mode=auto; if [ \"$service_wd\" = \"%REMOTE_APP%\" ]; then mode=root; elif [ \"$service_wd\" = \"%REMOTE_APP%/.next/standalone\" ]; then mode=standalone; fi; manifest=$(mktemp); tar -tzf %REMOTE_APP%/%ARCHIVE% > \"$manifest\"; has_standalone=0; has_root=0; if grep -q '^\./\.next/standalone/' \"$manifest\"; then has_standalone=1; fi; if grep -q '^\./server\.js$' \"$manifest\"; then has_root=1; fi; if [ \"$mode\" = auto ]; then if [ \"$has_standalone\" = 1 ]; then mode=standalone; elif [ \"$has_root\" = 1 ]; then mode=root; else echo 'ERROR: unknown archive layout'; rm -f \"$manifest\"; exit 6; fi; fi; echo deploy_mode=$mode; if [ \"$mode\" = standalone ]; then if [ \"$has_standalone\" = 1 ]; then rm -rf %REMOTE_APP%/.next/standalone %REMOTE_APP%/.next/static; tar -xzf %REMOTE_APP%/%ARCHIVE% -C %REMOTE_APP%; elif [ \"$has_root\" = 1 ]; then rm -rf %REMOTE_APP%/.next/standalone %REMOTE_APP%/.next/static; mkdir -p %REMOTE_APP%/.next/standalone; tar -xzf %REMOTE_APP%/%ARCHIVE% -C %REMOTE_APP%/.next/standalone; if [ -d %REMOTE_APP%/.next/standalone/.next/static ]; then mkdir -p %REMOTE_APP%/.next; mv %REMOTE_APP%/.next/standalone/.next/static %REMOTE_APP%/.next/static; fi; if [ -d %REMOTE_APP%/.next/standalone/public ]; then rm -rf %REMOTE_APP%/public; mv %REMOTE_APP%/.next/standalone/public %REMOTE_APP%/public; fi; rmdir %REMOTE_APP%/.next/standalone/.next 2>/dev/null || true; else echo 'ERROR: archive layout incompatible with standalone mode'; rm -f \"$manifest\"; exit 8; fi; work_dir=%REMOTE_APP%/.next/standalone; else if [ \"$has_root\" = 1 ]; then rm -rf %REMOTE_APP%/.next/static %REMOTE_APP%/public %REMOTE_APP%/node_modules; rm -f %REMOTE_APP%/server.js %REMOTE_APP%/package.json; tar -xzf %REMOTE_APP%/%ARCHIVE% -C %REMOTE_APP%; work_dir=%REMOTE_APP%; else echo 'ERROR: root mode requires archive with ./server.js'; rm -f \"$manifest\"; exit 9; fi; fi; rm -f \"$manifest\"; mkdir -p %REMOTE_APP%/data; if [ \"$work_dir\" = \"%REMOTE_APP%\" ]; then echo work_dir=app_root; else mkdir -p \"$work_dir\"; rm -rf \"$work_dir/data\"; ln -sfn %REMOTE_APP%/data \"$work_dir/data\"; fi; sqlite_nodes=$(find \"$work_dir\" -type f -name 'better_sqlite3.node'); if [ -z \"$sqlite_nodes\" ]; then echo 'ERROR: better_sqlite3.node not found.'; exit 4; fi; for f in $sqlite_nodes; do file \"$f\" | grep -q 'ELF' || { echo \"ERROR: non-ELF native module: $f\"; exit 5; }; done"
+echo [2/3] Uploading and executing server deployment script...
+scp "%~dp0%REMOTE_SCRIPT%" "%REMOTE_HOST%:%REMOTE_APP%/%REMOTE_SCRIPT%"
 if errorlevel 1 (
-  echo ERROR: Extract/verify failed.
+  echo ERROR: Upload %REMOTE_SCRIPT% failed.
   exit /b 1
 )
 
-echo [3/3] Restarting service...
-ssh %REMOTE_HOST% "set -euo pipefail; sudo systemctl restart zeshawn-next; sudo systemctl is-active --quiet zeshawn-next"
+echo [3/3] Running server deploy...
+ssh %REMOTE_HOST% "set -euo pipefail; chmod +x %REMOTE_APP%/%REMOTE_SCRIPT%; bash %REMOTE_APP%/%REMOTE_SCRIPT% %REMOTE_APP% %ARCHIVE% zeshawn-next"
 if errorlevel 1 (
-  echo ERROR: Service restart failed.
+  echo ERROR: Server deploy failed.
   exit /b 1
 )
 

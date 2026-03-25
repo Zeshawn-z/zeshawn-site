@@ -5,6 +5,7 @@ set "ARCHIVE=next-standalone.tar.gz"
 set "REMOTE_HOST=ali"
 set "REMOTE_APP=/var/www/zeshawn-site"
 set "REMOTE_ARCHIVE=%REMOTE_APP%/%ARCHIVE%"
+set "REMOTE_SCRIPT=server-deploy.sh"
 set "WSL_USER=zeshawn"
 
 set "SCRIPT_DIR=%~dp0"
@@ -32,8 +33,14 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [4/4] Deploying on server and restarting service...
-ssh %REMOTE_HOST% "set -euo pipefail; rm -rf %REMOTE_APP%/.next/standalone %REMOTE_APP%/.next/static; tar -xzf %REMOTE_ARCHIVE% -C %REMOTE_APP%; mkdir -p %REMOTE_APP%/data; rm -rf %REMOTE_APP%/.next/standalone/data; ln -sf %REMOTE_APP%/data %REMOTE_APP%/.next/standalone/data; sqlite_nodes=$(find %REMOTE_APP%/.next/standalone -type f -name 'better_sqlite3.node'); if [ -z \"$sqlite_nodes\" ]; then echo 'ERROR: better_sqlite3.node not found.'; exit 4; fi; for f in $sqlite_nodes; do file \"$f\" | grep -q 'ELF' || { echo \"ERROR: non-ELF native module: $f\"; exit 5; }; done; sudo systemctl restart zeshawn-next; sudo systemctl is-active --quiet zeshawn-next"
+echo [4/4] Deploying on server via server script...
+scp "%SCRIPT_DIR%%REMOTE_SCRIPT%" "%REMOTE_HOST%:%REMOTE_APP%/%REMOTE_SCRIPT%"
+if errorlevel 1 (
+  echo ERROR: Upload %REMOTE_SCRIPT% failed.
+  exit /b 1
+)
+
+ssh %REMOTE_HOST% "set -euo pipefail; chmod +x %REMOTE_APP%/%REMOTE_SCRIPT%; bash %REMOTE_APP%/%REMOTE_SCRIPT% %REMOTE_APP% %ARCHIVE% zeshawn-next"
 if errorlevel 1 (
   echo ERROR: Remote deploy failed.
   exit /b 1
