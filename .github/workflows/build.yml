@@ -44,7 +44,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Generated version: $VERSION"
 
-  build:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -74,23 +74,92 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: zeshawn-site
+          name: zeshawn-site-linux
           path: zeshawn-site.tar.gz
+          retention-days: 1
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (standalone)
+        run: npm run build
+
+      - name: Assemble standalone package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path ".next/standalone/.next" -Force | Out-Null
+          Copy-Item -Path ".next/static" -Destination ".next/standalone/.next/static" -Recurse -Force
+          Copy-Item -Path "public" -Destination ".next/standalone/public" -Recurse -Force
+
+      - name: Create zip archive
+        shell: pwsh
+        run: |
+          if (Test-Path "zeshawn-site-windows.zip") { Remove-Item "zeshawn-site-windows.zip" -Force }
+          Compress-Archive -Path ".next/standalone/*" -DestinationPath "zeshawn-site-windows.zip" -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zeshawn-site-windows
+          path: zeshawn-site-windows.zip
+          retention-days: 1
+
+  prepare-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare deployment scripts artifact
+        run: |
+          mkdir -p release-scripts
+          cp scripts/server-init.sh release-scripts/server-init.sh
+          cp scripts/server-deploy.sh release-scripts/server-deploy.sh
+          cp scripts/deploy-release.bat release-scripts/deploy-release.bat
+          cp scripts/deploy-oneclick.bat release-scripts/deploy-oneclick.bat
+
+      - name: Upload scripts artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zeshawn-site-scripts
+          path: release-scripts/*
           retention-days: 1
 
   release:
     runs-on: ubuntu-latest
-    needs: [tag, build]
+    needs: [tag, build-linux, build-windows, prepare-scripts]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Download artifact
+      - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
-          name: zeshawn-site
+          name: zeshawn-site-linux
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: zeshawn-site-windows
+
+      - name: Download scripts artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: zeshawn-site-scripts
 
       - name: Generate changelog
         id: changelog
@@ -122,7 +191,17 @@ jobs:
             ${{ steps.changelog.outputs.changelog }}
 
             ### 📦 产物说明
-            - `zeshawn-site.tar.gz` — Next.js standalone 构建产物
-            - 解压后 `node server.js` 即可运行
-          files: zeshawn-site.tar.gz
+            - `zeshawn-site.tar.gz` — Linux Next.js standalone 构建产物
+            - `zeshawn-site-windows.zip` — Windows Next.js standalone 构建产物
+            - `server-init.sh` — 服务器初始化脚本
+            - `server-deploy.sh` — 服务器部署/更新脚本
+            - `deploy-release.bat` — 本地部署到服务器脚本（通过 Release）
+            - `deploy-oneclick.bat` — 一键初始化+部署+启动脚本
+          files: |
+            zeshawn-site.tar.gz
+            zeshawn-site-windows.zip
+            server-init.sh
+            server-deploy.sh
+            deploy-release.bat
+            deploy-oneclick.bat
           generate_release_notes: false

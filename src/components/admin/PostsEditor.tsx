@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Save, Loader2, Eye, EyeOff, Edit3, MessageCircle, ArrowLeft, FileText, Upload, FileCheck } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Eye, EyeOff, Edit3, MessageCircle, ArrowLeft, FileText, Upload, FileCheck, Search } from "lucide-react";
 import type { PostAdmin } from "./types";
 import { FieldCommaInput, FieldInput } from "./FormFields";
 import MdEditor from "@/components/admin/MdEditor";
@@ -17,6 +17,7 @@ export default function PostsEditor({ posts, setPosts, onViewComments }: { posts
   const [editing, setEditing] = useState<PostAdmin | null>(null);
   const [savingPost, setSavingPost] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [showIndex, setShowIndex] = useState(false);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "markdown" | "pdf">("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
@@ -278,60 +279,72 @@ export default function PostsEditor({ posts, setPosts, onViewComments }: { posts
   // List view
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border border-border bg-card p-3">
-        <div className="grid gap-2 sm:grid-cols-3">
-          <FieldInput
-            label="搜索"
-            value={query}
-            onChange={setQuery}
-            placeholder="标题 / slug / 描述 / 标签"
-          />
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">类型筛选</label>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as "all" | "markdown" | "pdf")}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
-            >
-              <option value="all">全部</option>
-              <option value="markdown">Markdown</option>
-              <option value="pdf">PDF</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-muted">标签索引</label>
-            <select
-              value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value)}
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
-            >
-              <option value="all">全部标签</option>
-              {allTags.map((tag) => (
-                <option key={tag} value={tag}>{tag}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {allTags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <button
-              onClick={() => setTagFilter("all")}
-              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${tagFilter === "all" ? "bg-accent text-white" : "bg-accent/10 text-accent"}`}
-            >
-              全部
-            </button>
-            {allTags.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => setTagFilter(tag)}
-                className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${tagFilter === tag ? "bg-accent text-white" : "bg-accent/10 text-accent"}`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        )}
+      <div className="flex items-center justify-end">
+        <button
+          onClick={() => setShowIndex((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
+        >
+          <Search size={14} />
+          {showIndex ? "收起搜索/索引" : "展开搜索/索引"}
+        </button>
       </div>
+
+      {showIndex && (
+        <div className="rounded-lg border border-border bg-card p-3">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <FieldInput
+              label="搜索"
+              value={query}
+              onChange={setQuery}
+              placeholder="标题 / slug / 描述 / 标签"
+            />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted">类型筛选</label>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as "all" | "markdown" | "pdf")}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
+              >
+                <option value="all">全部</option>
+                <option value="markdown">Markdown</option>
+                <option value="pdf">PDF</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted">标签索引</label>
+              <select
+                value={tagFilter}
+                onChange={(e) => setTagFilter(e.target.value)}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-accent"
+              >
+                <option value="all">全部标签</option>
+                {allTags.map((tag) => (
+                  <option key={tag} value={tag}>{tag}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {allTags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setTagFilter("all")}
+                className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${tagFilter === "all" ? "bg-accent text-white" : "bg-accent/10 text-accent"}`}
+              >
+                全部
+              </button>
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setTagFilter(tag)}
+                  className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${tagFilter === tag ? "bg-accent text-white" : "bg-accent/10 text-accent"}`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {filteredPosts.map((post) => (
         <div key={post.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">

@@ -69,10 +69,18 @@ echo "[2/6] Preparing app data symlink..."
 mkdir -p "$APP_DIR/data"
 mkdir -p "$WORK_DIR"
 if [[ "$LAYOUT" == "root" ]]; then
-  echo "Root layout detected, keeping real data directory: $APP_DIR/data"
+  if [[ -L "$APP_DIR/data" ]]; then
+    rm -f "$APP_DIR/data"
+    mkdir -p "$APP_DIR/data"
+  fi
+  echo "Root layout detected, using real data directory: $APP_DIR/data"
 else
   rm -rf "$WORK_DIR/data"
   ln -sfn "$APP_DIR/data" "$WORK_DIR/data"
+  if [[ ! -L "$WORK_DIR/data" ]]; then
+    echo "ERROR: failed to create data symlink at $WORK_DIR/data"
+    exit 1
+  fi
 fi
 
 echo "[3/6] Writing systemd service..."
