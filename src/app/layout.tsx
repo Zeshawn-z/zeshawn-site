@@ -36,7 +36,7 @@ export function generateMetadata(): Metadata {
       template: `%s | ${cfg.name}`,
     },
     description,
-    metadataBase,
+    metadataBase: siteUrl ? new URL(siteUrl) : undefined,
     openGraph: {
       type: "website",
       locale: "zh_CN",
