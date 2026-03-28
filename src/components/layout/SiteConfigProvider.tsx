@@ -4,13 +4,6 @@ import { createContext, useContext, type ReactNode } from "react";
 
 export interface SiteConfigData {
   name: string;
-  branding: {
-    enabled: boolean;
-    logoLightUrl: string;
-    logoDarkUrl: string;
-    lightThemeLogoChoice: "light" | "dark" | "default";
-    darkThemeLogoChoice: "light" | "dark" | "default";
-  };
   social: {
     github: string;
     twitter: string;
@@ -21,13 +14,6 @@ export interface SiteConfigData {
 
 const SiteConfigContext = createContext<SiteConfigData>({
   name: "",
-  branding: {
-    enabled: true,
-    logoLightUrl: "",
-    logoDarkUrl: "",
-    lightThemeLogoChoice: "light",
-    darkThemeLogoChoice: "dark",
-  },
   social: { github: "", twitter: "", email: "" },
   nav: [],
 });

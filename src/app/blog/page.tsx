@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PenLine } from "lucide-react";
 import { getAllPosts } from "@/lib/db/data";
 import SpotlightSection from "@/components/common/SpotlightSection";
 import BlogIndex from "@/components/blog/BlogIndex";
@@ -16,14 +17,19 @@ export default function BlogPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 lg:px-8">
+      <section className="pb-12 pt-16">
+        <div className="flex items-center gap-3">
+          <PenLine size={24} className="text-accent" />
+          <h1 className="text-3xl font-bold tracking-tight">博客</h1>
+        </div>
+        <p className="mt-3 text-muted">
+          记录技术探索、项目实践和个人思考。
+        </p>
+      </section>
+
       <SpotlightSection>
-        <section className="pb-16 pt-16">
-          <BlogIndex
-            posts={posts}
-            showHeading
-            headingTitle="博客"
-            headingDescription="记录技术探索、项目实践和个人思考。"
-          />
+        <section className="pb-16">
+          <BlogIndex posts={posts} />
         </section>
       </SpotlightSection>
     </div>
