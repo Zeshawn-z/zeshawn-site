@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   ImageIcon,
+  Search,
 } from "lucide-react";
 import type { Tab, PostAdmin, GuestbookEntry, CommentAdmin, Project, Experience, SkillGroup } from "@/components/admin/types";
 import PostsEditor from "@/components/admin/PostsEditor";
@@ -46,6 +47,7 @@ export default function AdminDashboard() {
   const sidebarPlaceholderRef = useRef<HTMLDivElement>(null);
   const [sidebarLeft, setSidebarLeft] = useState<number | null>(null);
   const [isTall, setIsTall] = useState(true); // viewport height >= 700
+  const [postsShowIndex, setPostsShowIndex] = useState(false);
 
   // Track viewport height + sidebar horizontal position
   useEffect(() => {
@@ -191,16 +193,28 @@ export default function AdminDashboard() {
       )}
 
       {/* Mobile top bar (always visible on small screens) */}
-      <div className="mb-4 flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 lg:hidden">
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="rounded p-1.5 text-muted hover:text-foreground"
-        >
-          <Menu size={18} />
-        </button>
-        <h2 className="text-base font-semibold tracking-tight">
-          {navItems.find((n) => n.key === tab)?.label}
-        </h2>
+      <div className="mb-4 flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3 lg:hidden">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="rounded p-1.5 text-muted hover:text-foreground"
+          >
+            <Menu size={18} />
+          </button>
+          <h2 className="text-base font-semibold tracking-tight">
+            {navItems.find((n) => n.key === tab)?.label}
+          </h2>
+        </div>
+
+        {tab === "posts" && (
+          <button
+            onClick={() => setPostsShowIndex((v) => !v)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs text-muted transition-colors hover:text-foreground"
+          >
+            <Search size={12} />
+            {postsShowIndex ? "收起索引" : "展开索引"}
+          </button>
+        )}
       </div>
 
       {/* Mobile sidebar drawer */}
@@ -351,11 +365,32 @@ export default function AdminDashboard() {
         {/* Content area */}
         <div className="min-w-0 flex-1">
           {isTall && (
-            <h2 className="mb-5 hidden text-lg font-semibold tracking-tight lg:block">
-              {navItems.find((n) => n.key === tab)?.label}
-            </h2>
+            <div className="mb-5 hidden items-center justify-between lg:flex">
+              <h2 className="text-lg font-semibold tracking-tight">
+                {navItems.find((n) => n.key === tab)?.label}
+              </h2>
+              {tab === "posts" && (
+                <button
+                  onClick={() => setPostsShowIndex((v) => !v)}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
+                >
+                  <Search size={14} />
+                  {postsShowIndex ? "收起搜索/索引" : "展开搜索/索引"}
+                </button>
+              )}
+            </div>
           )}
-          {tab === "posts" && <PostsEditor posts={posts} setPosts={setPosts} onViewComments={(slug) => { setCommentFilterSlug(slug); setTab("comments"); }} />}
+          {tab === "posts" && (
+            <PostsEditor
+              posts={posts}
+              setPosts={setPosts}
+              showIndex={postsShowIndex}
+              onViewComments={(slug) => {
+                setCommentFilterSlug(slug);
+                setTab("comments");
+              }}
+            />
+          )}
           {tab === "projects" && <ProjectsEditor projects={projects} onChange={setProjects} posts={posts} />}
           {tab === "experiences" && <ExperiencesEditor experiences={experiences} onChange={setExperiences} posts={posts} />}
           {tab === "skills" && <SkillsEditor skills={skills} onChange={setSkills} />}

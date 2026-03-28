@@ -30,13 +30,33 @@ const NAV = [
   { href: "/about", label: "关于" },
 ];
 
+type LogoChoice = "light" | "dark" | "default";
+
+function normalizeLogoChoice(value: string | undefined, fallback: LogoChoice): LogoChoice {
+  if (value === "light" || value === "dark" || value === "default") {
+    return value;
+  }
+  return fallback;
+}
+
 export function getDynamicSiteConfig() {
   const cfg = getDbConfig();
+  const metaChoiceSource = cfg["branding.metaLogoChoice"] || cfg["branding.metaLogoVariant"];
+
   return {
     name: cfg["site.name"] || "Zeshawn",
     title: cfg["site.name"] || "Zeshawn",
     description: cfg["site.description"] || "",
     url: normalizeUrl(cfg["site.url"] || ""),
+
+    branding: {
+      enabled: cfg["branding.enabled"] !== "false",
+      logoLightUrl: cfg["branding.logoLightUrl"] || "",
+      logoDarkUrl: cfg["branding.logoDarkUrl"] || "",
+      lightThemeLogoChoice: normalizeLogoChoice(cfg["branding.lightThemeLogoChoice"], "light"),
+      darkThemeLogoChoice: normalizeLogoChoice(cfg["branding.darkThemeLogoChoice"], "dark"),
+      metaLogoChoice: normalizeLogoChoice(metaChoiceSource, "default"),
+    },
 
     author: {
       name: cfg["author.name"] || "",
@@ -72,6 +92,13 @@ export function getClientSiteConfig(): SiteConfigData {
   const full = getDynamicSiteConfig();
   return {
     name: full.name,
+    branding: {
+      enabled: full.branding.enabled,
+      logoLightUrl: full.branding.logoLightUrl,
+      logoDarkUrl: full.branding.logoDarkUrl,
+      lightThemeLogoChoice: full.branding.lightThemeLogoChoice,
+      darkThemeLogoChoice: full.branding.darkThemeLogoChoice,
+    },
     social: full.social,
     nav: full.nav,
   };
