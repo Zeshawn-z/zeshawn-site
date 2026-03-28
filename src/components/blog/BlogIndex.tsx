@@ -2,25 +2,13 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { BookOpen, Calendar, Clock, FileText, PenLine, Search } from "lucide-react";
+import { BookOpen, Calendar, Clock, FileText, Search } from "lucide-react";
 import type { BlogPost } from "@/lib/db/types";
 import ScrollReveal from "@/components/common/ScrollReveal";
 import GlowCard from "@/components/common/GlowCard";
 import { FieldInput } from "@/components/admin/FormFields";
 
-interface BlogIndexProps {
-  posts: BlogPost[];
-  showHeading?: boolean;
-  headingTitle?: string;
-  headingDescription?: string;
-}
-
-export default function BlogIndex({
-  posts,
-  showHeading = false,
-  headingTitle = "博客",
-  headingDescription = "",
-}: BlogIndexProps) {
+export default function BlogIndex({ posts }: { posts: BlogPost[] }) {
   const [showIndex, setShowIndex] = useState(false);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "markdown" | "pdf">("all");
@@ -58,36 +46,15 @@ export default function BlogIndex({
 
   return (
     <div className="space-y-4">
-      {showHeading ? (
-        <section className="pb-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <PenLine size={24} className="text-accent" />
-              <h1 className="text-3xl font-bold tracking-tight">{headingTitle}</h1>
-            </div>
-            <button
-              onClick={() => setShowIndex((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
-            >
-              <Search size={14} />
-              {showIndex ? "收起搜索/索引" : "展开搜索/索引"}
-            </button>
-          </div>
-          {headingDescription && (
-            <p className="mt-3 text-muted">{headingDescription}</p>
-          )}
-        </section>
-      ) : (
-        <div className="flex items-center justify-end">
-          <button
-            onClick={() => setShowIndex((v) => !v)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
-          >
-            <Search size={14} />
-            {showIndex ? "收起搜索/索引" : "展开搜索/索引"}
-          </button>
-        </div>
-      )}
+      <div className="flex items-center justify-end">
+        <button
+          onClick={() => setShowIndex((v) => !v)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
+        >
+          <Search size={14} />
+          {showIndex ? "收起搜索/索引" : "展开搜索/索引"}
+        </button>
+      </div>
 
       {showIndex && (
         <div className="rounded-lg border border-border bg-card p-3">

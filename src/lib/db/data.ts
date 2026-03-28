@@ -592,7 +592,7 @@ export function getAllImages() {
     .all();
 }
 
-/** 扫描帖子内容与站点配置，删除未被引用的图片，返回被删除的图片 id 列表 */
+/** 扫描所有帖子内容，删除未被任何帖子引用的图片，返回被删除的图片 id 列表 */
 export function cleanupUnusedImages() {
   const db = getDb();
 
@@ -611,19 +611,6 @@ export function cleanupUnusedImages() {
       usedIds.add(match[1]);
     }
     regex.lastIndex = 0; // reset for next post
-  }
-
-  // 2.1 收集 site_config 中引用的图片（如 light/dark logo）
-  const configRows = db
-    .select({ value: schema.siteConfig.value })
-    .from(schema.siteConfig)
-    .all();
-  for (const row of configRows) {
-    let match;
-    while ((match = regex.exec(row.value)) !== null) {
-      usedIds.add(match[1]);
-    }
-    regex.lastIndex = 0;
   }
 
   // 3. 获取所有图片 id
