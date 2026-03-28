@@ -2,6 +2,26 @@
 import { getSiteConfig as getDbConfig } from "@/lib/db/data";
 import type { SiteConfigData } from "@/components/layout/SiteConfigProvider";
 
+/** Normalize a site URL: trim whitespace, ensure https:// prefix, and validate. Returns empty string for invalid URLs. */
+function normalizeUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(withProtocol);
+    // Remove trailing slash from pathname only (preserves query/hash)
+    if (parsed.pathname !== "/") {
+      parsed.pathname = parsed.pathname.replace(/\/+$/, "");
+    } else {
+      parsed.pathname = "";
+    }
+    return parsed.toString();
+  } catch {
+    // Return empty string for truly invalid URLs so they don't break the site
+    return "";
+  }
+}
+
 const NAV = [
   { href: "/", label: "首页" },
   { href: "/projects", label: "项目" },
@@ -27,7 +47,7 @@ export function getDynamicSiteConfig() {
     name: cfg["site.name"] || "Zeshawn",
     title: cfg["site.name"] || "Zeshawn",
     description: cfg["site.description"] || "",
-    url: cfg["site.url"] || "",
+    url: normalizeUrl(cfg["site.url"] || ""),
 
     branding: {
       enabled: cfg["branding.enabled"] !== "false",
