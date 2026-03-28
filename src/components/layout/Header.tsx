@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -11,6 +12,7 @@ export default function Header() {
   const siteConfig = useSiteConfig();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
   const navRef = useRef<HTMLElement>(null);
   const linkRefs = useRef<(HTMLAnchorElement | null)[]>([]);
@@ -55,6 +57,32 @@ export default function Header() {
     };
   }, [updateIndicator]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+
+    const syncTheme = () => {
+      setIsDark(root.classList.contains("dark"));
+    };
+
+    syncTheme();
+    const observer = new MutationObserver(syncTheme);
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const pickLogoUrl = (choice: "light" | "dark" | "default") => {
+    if (!siteConfig.branding.enabled || choice === "default") return "";
+    if (choice === "light") return siteConfig.branding.logoLightUrl || "";
+    return siteConfig.branding.logoDarkUrl || "";
+  };
+
+  const activeChoice = isDark
+    ? siteConfig.branding.darkThemeLogoChoice
+    : siteConfig.branding.lightThemeLogoChoice;
+  const logoSrc = pickLogoUrl(activeChoice);
+  const hasCustomLogo = Boolean(logoSrc);
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 lg:px-8">
@@ -62,8 +90,20 @@ export default function Header() {
           href="/"
           className="flex items-center gap-2 text-lg font-semibold tracking-tight transition-colors hover:text-accent"
         >
-          <Terminal size={18} className="text-accent" />
-          {siteConfig.name}
+          {hasCustomLogo ? (
+            <Image
+              src={logoSrc}
+              alt="Site logo"
+              width={27}
+              height={27}
+              className="h-[27px] w-[27px] object-contain"
+              unoptimized
+              priority
+            />
+          ) : (
+            <Terminal size={18} className="text-accent" />
+          )}
+          <span>{siteConfig.name}</span>
         </Link>
 
         {/* Desktop Nav */}

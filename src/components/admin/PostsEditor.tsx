@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Save, Loader2, Eye, EyeOff, Edit3, MessageCircle, ArrowLeft, FileText, Upload, FileCheck, Search } from "lucide-react";
+import { Plus, Trash2, Save, Loader2, Eye, EyeOff, Edit3, MessageCircle, ArrowLeft, FileText, Upload, FileCheck } from "lucide-react";
 import type { PostAdmin } from "./types";
 import { FieldCommaInput, FieldInput } from "./FormFields";
 import MdEditor from "@/components/admin/MdEditor";
@@ -13,11 +13,20 @@ function parseCommaSeparated(input: string): string[] {
     .filter(Boolean);
 }
 
-export default function PostsEditor({ posts, setPosts, onViewComments }: { posts: PostAdmin[]; setPosts: (p: PostAdmin[]) => void; onViewComments: (slug: string) => void }) {
+export default function PostsEditor({
+  posts,
+  setPosts,
+  onViewComments,
+  showIndex,
+}: {
+  posts: PostAdmin[];
+  setPosts: (p: PostAdmin[]) => void;
+  onViewComments: (slug: string) => void;
+  showIndex: boolean;
+}) {
   const [editing, setEditing] = useState<PostAdmin | null>(null);
   const [savingPost, setSavingPost] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [showIndex, setShowIndex] = useState(false);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "markdown" | "pdf">("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
@@ -279,16 +288,6 @@ export default function PostsEditor({ posts, setPosts, onViewComments }: { posts
   // List view
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-end">
-        <button
-          onClick={() => setShowIndex((v) => !v)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
-        >
-          <Search size={14} />
-          {showIndex ? "收起搜索/索引" : "展开搜索/索引"}
-        </button>
-      </div>
-
       {showIndex && (
         <div className="rounded-lg border border-border bg-card p-3">
           <div className="grid gap-2 sm:grid-cols-3">
