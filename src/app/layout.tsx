@@ -23,7 +23,14 @@ export function generateMetadata(): Metadata {
   const description = cfg.description || `${cfg.name} 的个人网站 - 项目、博客与技术分享`;
   const siteUrl = cfg.url || "";
 
-  return {
+  const getLogoUrlByChoice = (choice: "light" | "dark" | "default") => {
+    if (!cfg.branding.enabled || choice === "default") return "";
+    return choice === "light" ? cfg.branding.logoLightUrl : cfg.branding.logoDarkUrl;
+  };
+
+  const metaLogoUrl = getLogoUrlByChoice(cfg.branding.metaLogoChoice);
+
+  const metadata: Metadata = {
     title: {
       default: cfg.name,
       template: `%s | ${cfg.name}`,
@@ -45,6 +52,16 @@ export function generateMetadata(): Metadata {
     },
     alternates: siteUrl ? { canonical: siteUrl } : undefined,
   };
+
+  if (metaLogoUrl) {
+    metadata.icons = {
+      icon: [{ url: metaLogoUrl }],
+      shortcut: [{ url: metaLogoUrl }],
+      apple: [{ url: metaLogoUrl }],
+    };
+  }
+
+  return metadata;
 }
 
 // Inline script to prevent FOUC (flash of unstyled content) on theme load
