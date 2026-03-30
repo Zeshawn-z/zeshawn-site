@@ -8,9 +8,6 @@ export const metadata: Metadata = {
   description: "技术博客与文章",
 };
 
-export const dynamic = "force-dynamic";
-export const revalidate = 30; // 每 30 秒重新验证一次
-
 export default function BlogPage() {
   const posts = getAllPosts();
 

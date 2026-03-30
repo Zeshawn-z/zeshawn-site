@@ -1,6 +1,6 @@
 import type { Project, Experience, SkillGroup } from "@/lib/db/types";
 
-export type Tab = "posts" | "projects" | "experiences" | "skills" | "comments" | "guestbook" | "images" | "config";
+export type Tab = "posts" | "notes" | "projects" | "experiences" | "skills" | "comments" | "guestbook" | "images" | "config";
 
 export interface PostAdmin {
   id: string;
@@ -14,6 +14,20 @@ export interface PostAdmin {
   tags: string[];
   published: boolean;
   commentsEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoteAdmin {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  content: string;
+  group: string;
+  date: string;
+  tags: string[];
+  order: number;
   createdAt: string;
   updatedAt: string;
 }

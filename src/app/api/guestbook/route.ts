@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getGuestbookEntries, getGuestbookCount, addGuestbookEntry, getSiteConfig } from "@/lib/db/data";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getIpLocation } from "@/lib/ip-location";
+import { revalidateGuestbookPage } from "@/lib/cache/revalidate-site";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
     const location = await getIpLocation(ip);
 
     const entry = addGuestbookEntry(nickname, message, location);
+    revalidateGuestbookPage();
     return NextResponse.json(entry);
   } catch {
     return NextResponse.json({ error: "提交失败" }, { status: 500 });

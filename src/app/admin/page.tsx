@@ -19,9 +19,11 @@ import {
   X,
   ImageIcon,
   Search,
+  BookOpen,
 } from "lucide-react";
-import type { Tab, PostAdmin, GuestbookEntry, CommentAdmin, Project, Experience, SkillGroup } from "@/components/admin/types";
+import type { Tab, PostAdmin, NoteAdmin, GuestbookEntry, CommentAdmin, Project, Experience, SkillGroup } from "@/components/admin/types";
 import PostsEditor from "@/components/admin/PostsEditor";
+import NotesEditor from "@/components/admin/NotesEditor";
 import CommentsManager from "@/components/admin/CommentsManager";
 import GuestbookManager from "@/components/admin/GuestbookManager";
 import ConfigEditor from "@/components/admin/ConfigEditor";
@@ -47,7 +49,10 @@ export default function AdminDashboard() {
   const sidebarPlaceholderRef = useRef<HTMLDivElement>(null);
   const [sidebarLeft, setSidebarLeft] = useState<number | null>(null);
   const [isTall, setIsTall] = useState(true); // viewport height >= 700
-  const [postsShowIndex, setPostsShowIndex] = useState(false);
+  const [contentShowIndex, setContentShowIndex] = useState(false);
+  const [initialPostEditId, setInitialPostEditId] = useState<string | null>(null);
+  const [initialNoteEditId, setInitialNoteEditId] = useState<string | null>(null);
+  const queryInitRef = useRef(false);
 
   // Track viewport height + sidebar horizontal position
   useEffect(() => {
@@ -66,10 +71,41 @@ export default function AdminDashboard() {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [skills, setSkills] = useState<SkillGroup[]>([]);
   const [posts, setPosts] = useState<PostAdmin[]>([]);
+  const [notes, setNotes] = useState<NoteAdmin[]>([]);
   const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>([]);
   const [commentsData, setCommentsData] = useState<CommentAdmin[]>([]);
   const [commentFilterSlug, setCommentFilterSlug] = useState<string>("");
   const [siteConfigData, setSiteConfigData] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (queryInitRef.current) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    const editParam = params.get("edit");
+    if (
+      tabParam === "posts" ||
+      tabParam === "notes" ||
+      tabParam === "projects" ||
+      tabParam === "experiences" ||
+      tabParam === "skills" ||
+      tabParam === "comments" ||
+      tabParam === "guestbook" ||
+      tabParam === "images" ||
+      tabParam === "config"
+    ) {
+      setTab(tabParam);
+    }
+
+    if (editParam && tabParam === "posts") {
+      setInitialPostEditId(editParam);
+    }
+    if (editParam && tabParam === "notes") {
+      setInitialNoteEditId(editParam);
+    }
+
+    queryInitRef.current = true;
+  }, []);
 
   // Auth check
   useEffect(() => {
@@ -84,11 +120,12 @@ export default function AdminDashboard() {
 
   // Load data
   const loadData = useCallback(async () => {
-    const [p, e, s, posts, gb, cm, cfg] = await Promise.all([
+    const [p, e, s, posts, notes, gb, cm, cfg] = await Promise.all([
       fetch("/api/admin/projects").then((r) => r.json()),
       fetch("/api/admin/experiences").then((r) => r.json()),
       fetch("/api/admin/skills").then((r) => r.json()),
       fetch("/api/admin/posts").then((r) => r.json()),
+      fetch("/api/admin/notes").then((r) => r.json()),
       fetch("/api/guestbook").then((r) => r.json()),
       fetch("/api/admin/comments").then((r) => r.json()),
       fetch("/api/admin/config").then((r) => r.json()),
@@ -97,6 +134,7 @@ export default function AdminDashboard() {
     setExperiences(e);
     setSkills(s);
     setPosts(posts);
+    setNotes(notes);
     setGuestbookEntries(gb.entries || []);
     setCommentsData(cm || []);
     setSiteConfigData(cfg);
@@ -168,6 +206,7 @@ export default function AdminDashboard() {
 
   const navItems: { key: Tab; label: string; icon: React.ReactNode }[] = [
     { key: "posts", label: "博客", icon: <PenLine size={16} /> },
+    { key: "notes", label: "笔记", icon: <BookOpen size={16} /> },
     { key: "projects", label: "项目", icon: <FolderKanban size={16} /> },
     { key: "experiences", label: "经历", icon: <Briefcase size={16} /> },
     { key: "skills", label: "技能", icon: <Wrench size={16} /> },
@@ -180,6 +219,8 @@ export default function AdminDashboard() {
   const switchTab = (key: Tab) => {
     setTab(key);
     setSidebarOpen(false);
+    if (key !== "posts") setInitialPostEditId(null);
+    if (key !== "notes") setInitialNoteEditId(null);
   };
 
   return (
@@ -206,13 +247,13 @@ export default function AdminDashboard() {
           </h2>
         </div>
 
-        {tab === "posts" && (
+        {(tab === "posts" || tab === "notes") && (
           <button
-            onClick={() => setPostsShowIndex((v) => !v)}
+            onClick={() => setContentShowIndex((v) => !v)}
             className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs text-muted transition-colors hover:text-foreground"
           >
             <Search size={12} />
-            {postsShowIndex ? "收起索引" : "展开索引"}
+            {contentShowIndex ? "收起索引" : "展开索引"}
           </button>
         )}
       </div>
@@ -369,13 +410,13 @@ export default function AdminDashboard() {
               <h2 className="text-lg font-semibold tracking-tight">
                 {navItems.find((n) => n.key === tab)?.label}
               </h2>
-              {tab === "posts" && (
+              {(tab === "posts" || tab === "notes") && (
                 <button
-                  onClick={() => setPostsShowIndex((v) => !v)}
+                  onClick={() => setContentShowIndex((v) => !v)}
                   className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
                 >
                   <Search size={14} />
-                  {postsShowIndex ? "收起搜索/索引" : "展开搜索/索引"}
+                  {contentShowIndex ? "收起搜索/索引" : "展开搜索/索引"}
                 </button>
               )}
             </div>
@@ -384,11 +425,20 @@ export default function AdminDashboard() {
             <PostsEditor
               posts={posts}
               setPosts={setPosts}
-              showIndex={postsShowIndex}
+              showIndex={contentShowIndex}
+              initialEditId={initialPostEditId}
               onViewComments={(slug) => {
                 setCommentFilterSlug(slug);
                 setTab("comments");
               }}
+            />
+          )}
+          {tab === "notes" && (
+            <NotesEditor
+              notes={notes}
+              setNotes={setNotes}
+              showIndex={contentShowIndex}
+              initialEditId={initialNoteEditId}
             />
           )}
           {tab === "projects" && <ProjectsEditor projects={projects} onChange={setProjects} posts={posts} />}

@@ -18,8 +18,6 @@ import SpotlightSection from "@/components/common/SpotlightSection";
 import ProjectCardLinks from "@/components/projects/ProjectCardLinks";
 
 
-export const dynamic = "force-dynamic";
-
 export default function Home() {
   const siteConfig = getDynamicSiteConfig();
   const projects = getProjects();

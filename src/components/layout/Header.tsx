@@ -7,6 +7,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Menu, X, Terminal } from "lucide-react";
 import { useSiteConfig } from "@/components/layout/SiteConfigProvider";
 import ThemeToggle from "@/components/common/ThemeToggle";
+import AdminQuickCreate from "@/components/layout/AdminQuickCreate";
 
 export default function Header() {
   const siteConfig = useSiteConfig();
@@ -48,10 +49,11 @@ export default function Header() {
   }, [activeIndex]);
 
   useEffect(() => {
-    updateIndicator();
+    const raf = requestAnimationFrame(updateIndicator);
     const timer = setTimeout(updateIndicator, 50);
     window.addEventListener("resize", updateIndicator);
     return () => {
+      cancelAnimationFrame(raf);
       clearTimeout(timer);
       window.removeEventListener("resize", updateIndicator);
     };
@@ -139,7 +141,10 @@ export default function Header() {
           </nav>
 
           <div className="ml-3 border-l border-border pl-3">
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <AdminQuickCreate />
+              <ThemeToggle />
+            </div>
           </div>
         </div>
 
@@ -159,6 +164,7 @@ export default function Header() {
       {/* Mobile Nav */}
       {mobileMenuOpen && (
         <nav className="border-t border-border px-6 py-3 sm:hidden">
+          <AdminQuickCreate mobile />
           <div className="flex flex-col gap-1">
             {siteConfig.nav.map((link) => (
               <Link

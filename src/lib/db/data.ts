@@ -1,7 +1,7 @@
 import { getDb } from "./db";
 import { eq, desc, asc, sql, and, count } from "drizzle-orm";
 import * as schema from "./schema";
-import type { Project, Experience, SkillGroup, BlogPost } from "./types";
+import type { Project, Experience, SkillGroup, BlogPost, Note } from "./types";
 
 // ─── Projects ─────────────────────────────────────────────────
 
@@ -662,4 +662,145 @@ export function getPdf(id: string) {
 export function deletePdf(id: string) {
   const db = getDb();
   db.delete(schema.pdfs).where(eq(schema.pdfs.id, id)).run();
+}
+
+// ─── Notes ───────────────────────────────────────────────────
+
+export interface NoteFull extends Note {
+  id: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoteGroup {
+  name: string;
+  notes: Note[];
+}
+
+export function getAllNotes(): Note[] {
+  const db = getDb();
+  const rows = db
+    .select()
+    .from(schema.notes)
+    .orderBy(asc(schema.notes.order))
+    .all();
+  return rows.map(rowToNote);
+}
+
+export function getAllNotesAdmin(): NoteFull[] {
+  const db = getDb();
+  const rows = db
+    .select()
+    .from(schema.notes)
+    .orderBy(asc(schema.notes.order))
+    .all();
+  return rows.map(rowToNoteFull);
+}
+
+export function getNotesByGroup(): NoteGroup[] {
+  const all = getAllNotes();
+  const groupMap = new Map<string, Note[]>();
+  for (const note of all) {
+    const g = note.group || "未分类";
+    if (!groupMap.has(g)) groupMap.set(g, []);
+    groupMap.get(g)!.push(note);
+  }
+  return Array.from(groupMap.entries()).map(([name, notes]) => ({ name, notes }));
+}
+
+export function getNoteBySlug(slug: string): NoteFull | null {
+  const db = getDb();
+  const row = db
+    .select()
+    .from(schema.notes)
+    .where(eq(schema.notes.slug, slug))
+    .get();
+  if (!row) return null;
+  return rowToNoteFull(row);
+}
+
+export function createNote(note: {
+  slug: string;
+  title: string;
+  description: string;
+  content: string;
+  group: string;
+  date: string;
+  tags: string[];
+  order?: number;
+}): NoteFull {
+  const db = getDb();
+  const id = Date.now().toString() + Math.random().toString(36).slice(2, 6);
+  const now = new Date().toISOString();
+  db.insert(schema.notes).values({
+    id,
+    slug: note.slug,
+    title: note.title,
+    description: note.description,
+    content: note.content,
+    group: note.group,
+    date: note.date,
+    tags: note.tags,
+    order: note.order ?? 999,
+    createdAt: now,
+    updatedAt: now,
+  }).run();
+  return getNoteBySlug(note.slug)!;
+}
+
+export function updateNote(
+  id: string,
+  updates: {
+    slug?: string;
+    title?: string;
+    description?: string;
+    content?: string;
+    group?: string;
+    date?: string;
+    tags?: string[];
+    order?: number;
+  }
+) {
+  const db = getDb();
+  const u: Partial<typeof schema.notes.$inferInsert> = {
+    updatedAt: new Date().toISOString(),
+  };
+  if (updates.slug !== undefined) u.slug = updates.slug;
+  if (updates.title !== undefined) u.title = updates.title;
+  if (updates.description !== undefined) u.description = updates.description;
+  if (updates.content !== undefined) u.content = updates.content;
+  if (updates.group !== undefined) u.group = updates.group;
+  if (updates.date !== undefined) u.date = updates.date;
+  if (updates.tags !== undefined) u.tags = updates.tags;
+  if (updates.order !== undefined) u.order = updates.order;
+
+  db.update(schema.notes).set(u).where(eq(schema.notes.id, id)).run();
+}
+
+export function deleteNote(id: string) {
+  const db = getDb();
+  db.delete(schema.notes).where(eq(schema.notes.id, id)).run();
+}
+
+function rowToNote(r: typeof schema.notes.$inferSelect): Note {
+  return {
+    slug: r.slug,
+    title: r.title,
+    description: r.description,
+    group: r.group,
+    date: r.date,
+    tags: r.tags,
+    order: r.order,
+  };
+}
+
+function rowToNoteFull(r: typeof schema.notes.$inferSelect): NoteFull {
+  return {
+    ...rowToNote(r),
+    id: r.id,
+    content: r.content,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
 }

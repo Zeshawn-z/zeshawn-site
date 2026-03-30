@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 
-export const dynamic = "force-dynamic";
-
 export function generateMetadata(): Metadata {
   return {
     title: `管理后台`,
