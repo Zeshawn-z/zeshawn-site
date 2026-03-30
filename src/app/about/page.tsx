@@ -12,9 +12,6 @@ export const metadata: Metadata = {
   description: "关于我的介绍和经历",
 };
 
-export const dynamic = "force-dynamic";
-export const revalidate = 60; // 每 60 秒重新验证一次，避免每次请求都重新渲染
-
 export default function AboutPage() {
   const { author, about } = getDynamicSiteConfig();
   const experiences = getExperiences();

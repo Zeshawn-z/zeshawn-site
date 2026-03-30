@@ -12,9 +12,6 @@ export const metadata: Metadata = {
   description: "我参与开发的一些项目",
 };
 
-export const dynamic = "force-dynamic";
-export const revalidate = 60; // 每 60 秒重新验证一次
-
 export default function ProjectsPage() {
   const projects = getProjects();
 

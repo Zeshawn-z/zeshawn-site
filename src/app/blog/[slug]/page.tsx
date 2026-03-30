@@ -2,12 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Calendar, Clock, FileText } from "lucide-react";
-import { getPostBySlug, getAllPosts } from "@/lib/db/data";
+import { getPostBySlug } from "@/lib/db/data";
 import { renderMarkdown } from "@/lib/content/markdown";
 import CopyCodeButton from "@/components/common/CopyCodeButton";
 import BlogComments from "@/components/blog/BlogComments";
-
-export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ slug: string }>;

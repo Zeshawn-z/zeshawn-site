@@ -81,6 +81,20 @@ export const images = sqliteTable("images", {
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
 });
 
+export const notes = sqliteTable("notes", {
+  id: text("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull().default(""),
+  description: text("description").notNull().default(""),
+  content: text("content").notNull().default(""),
+  group: text("group").notNull().default(""),
+  date: text("date").notNull().default(""),
+  tags: text("tags", { mode: "json" }).notNull().$type<string[]>().default([]),
+  order: integer("order").notNull().default(999),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
 export const pdfs = sqliteTable("pdfs", {
   id: text("id").primaryKey(),
   filename: text("filename").notNull(),

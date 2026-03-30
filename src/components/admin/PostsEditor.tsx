@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Save, Loader2, Eye, EyeOff, Edit3, MessageCircle, ArrowLeft, FileText, Upload, FileCheck } from "lucide-react";
 import type { PostAdmin } from "./types";
 import { FieldCommaInput, FieldInput } from "./FormFields";
@@ -18,11 +18,13 @@ export default function PostsEditor({
   setPosts,
   onViewComments,
   showIndex,
+  initialEditId,
 }: {
   posts: PostAdmin[];
   setPosts: (p: PostAdmin[]) => void;
   onViewComments: (slug: string) => void;
   showIndex: boolean;
+  initialEditId?: string | null;
 }) {
   const [editing, setEditing] = useState<PostAdmin | null>(null);
   const [savingPost, setSavingPost] = useState(false);
@@ -31,6 +33,16 @@ export default function PostsEditor({
   const [typeFilter, setTypeFilter] = useState<"all" | "markdown" | "pdf">("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const pdfInputRef = useRef<HTMLInputElement>(null);
+  const initialAppliedRef = useRef(false);
+
+  useEffect(() => {
+    if (initialAppliedRef.current || !initialEditId) return;
+    const target = posts.find((p) => p.id === initialEditId);
+    if (target) {
+      setEditing(target);
+      initialAppliedRef.current = true;
+    }
+  }, [initialEditId, posts]);
 
   const allTags = useMemo(() => {
     return Array.from(new Set(posts.flatMap((post) => post.tags || []))).sort((a, b) => a.localeCompare(b, "zh-CN"));

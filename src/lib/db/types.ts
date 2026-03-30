@@ -41,3 +41,13 @@ export interface SkillGroup {
   skills: string[];
   order?: number;
 }
+
+export interface Note {
+  slug: string;
+  title: string;
+  description: string;
+  group: string;
+  date: string;
+  tags: string[];
+  order?: number;
+}

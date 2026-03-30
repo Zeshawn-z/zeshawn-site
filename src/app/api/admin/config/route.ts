@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth/auth";
 import { getSiteConfig, updateSiteConfig } from "@/lib/db/data";
+import { revalidateEntireSite } from "@/lib/cache/revalidate-site";
 
 export async function GET() {
   if (!(await isAuthenticated())) {
@@ -17,6 +18,7 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     updateSiteConfig(body);
+    revalidateEntireSite();
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "保存失败" }, { status: 500 });

@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { getClientSiteConfig, getDynamicSiteConfig } from "@/lib/config/site-config-dynamic";
 import SiteConfigProvider from "@/components/layout/SiteConfigProvider";
 import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import FooterSlot from "@/components/layout/FooterSlot";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,8 +15,6 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
-
-export const dynamic = "force-dynamic";
 
 export function generateMetadata(): Metadata {
   const cfg = getDynamicSiteConfig();
@@ -95,7 +93,7 @@ export default function RootLayout({
           <div className="flex min-h-screen flex-col">
             <Header />
             <main className="flex-1">{children}</main>
-            <Footer />
+            <FooterSlot />
           </div>
         </SiteConfigProvider>
       </body>
