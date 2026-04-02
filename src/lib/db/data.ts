@@ -592,47 +592,57 @@ export function getAllImages() {
     .all();
 }
 
-/** 扫描帖子内容与站点配置，删除未被引用的图片，返回被删除的图片 id 列表 */
+const IMAGE_API_ID_REGEX = /\/api\/images\/([a-f0-9-]{36})/gi;
+
+function collectImageIdsFromText(content: string, bucket: Set<string>) {
+  let match: RegExpExecArray | null;
+  while ((match = IMAGE_API_ID_REGEX.exec(content)) !== null) {
+    bucket.add(match[1]);
+  }
+  IMAGE_API_ID_REGEX.lastIndex = 0;
+}
+
+/** 扫描博客、笔记与站点配置引用，删除未被引用的图片，返回被删除的图片 id 列表 */
 export function cleanupUnusedImages() {
   const db = getDb();
 
-  // 1. 获取所有帖子的 content
-  const allPosts = db
+  // 1. 收集博客内容引用
+  const postRows = db
     .select({ content: schema.posts.content })
     .from(schema.posts)
     .all();
 
-  // 2. 收集所有帖子中引用的图片 id
-  const usedIds = new Set<string>();
-  const regex = /\/api\/images\/([a-f0-9-]{36})/g;
-  for (const post of allPosts) {
-    let match;
-    while ((match = regex.exec(post.content)) !== null) {
-      usedIds.add(match[1]);
-    }
-    regex.lastIndex = 0; // reset for next post
-  }
+  // 2. 收集笔记内容引用
+  const noteRows = db
+    .select({ content: schema.notes.content })
+    .from(schema.notes)
+    .all();
 
-  // 2.1 收集 site_config 中引用的图片（如 light/dark logo）
+  // 3. 收集站点配置引用（包含 logo、头像等可能的图片链接）
   const configRows = db
     .select({ value: schema.siteConfig.value })
     .from(schema.siteConfig)
     .all();
+
+  // 4. 汇总所有被引用图片 id
+  const usedIds = new Set<string>();
+  for (const row of postRows) {
+    collectImageIdsFromText(row.content, usedIds);
+  }
   for (const row of configRows) {
-    let match;
-    while ((match = regex.exec(row.value)) !== null) {
-      usedIds.add(match[1]);
-    }
-    regex.lastIndex = 0;
+    collectImageIdsFromText(row.value, usedIds);
+  }
+  for (const row of noteRows) {
+    collectImageIdsFromText(row.content, usedIds);
   }
 
-  // 3. 获取所有图片 id
+  // 5. 获取所有图片 id
   const allImages = db
     .select({ id: schema.images.id })
     .from(schema.images)
     .all();
 
-  // 4. 删除未被引用的图片
+  // 6. 删除未被引用的图片
   const deletedIds: string[] = [];
   for (const img of allImages) {
     if (!usedIds.has(img.id)) {
@@ -675,7 +685,122 @@ export interface NoteFull extends Note {
 
 export interface NoteGroup {
   name: string;
+  order: number;
   notes: Note[];
+}
+
+export interface NoteGroupOrder {
+  name: string;
+  order: number;
+}
+
+function createNoteGroupId() {
+  return `ng_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeNoteGroupName(name: string | undefined) {
+  const normalized = (name || "").trim();
+  return normalized || "未分类";
+}
+
+function ensureNoteGroupExists(name: string) {
+  const db = getDb();
+  const normalizedName = normalizeNoteGroupName(name);
+  const existing = db
+    .select({ id: schema.noteGroups.id })
+    .from(schema.noteGroups)
+    .where(eq(schema.noteGroups.name, normalizedName))
+    .get();
+  if (existing) return;
+
+  const maxOrderRow = db
+    .select({ maxOrder: sql<number>`coalesce(max(${schema.noteGroups.order}), -1)` })
+    .from(schema.noteGroups)
+    .get();
+
+  db.insert(schema.noteGroups).values({
+    id: createNoteGroupId(),
+    name: normalizedName,
+    order: Number(maxOrderRow?.maxOrder ?? -1) + 1,
+  }).run();
+}
+
+function syncNoteGroupOrdersWithNotes() {
+  const db = getDb();
+  const noteGroupRows = db
+    .select({ group: schema.notes.group })
+    .from(schema.notes)
+    .orderBy(asc(schema.notes.order))
+    .all();
+
+  const names = Array.from(
+    new Set(noteGroupRows.map((row) => normalizeNoteGroupName(row.group)))
+  );
+  if (names.length === 0) return;
+
+  const existingRows = db
+    .select({ name: schema.noteGroups.name, order: schema.noteGroups.order })
+    .from(schema.noteGroups)
+    .all();
+  const existingNames = new Set(existingRows.map((row) => row.name));
+  let nextOrder = existingRows.reduce((max, row) => Math.max(max, row.order), -1) + 1;
+
+  db.transaction((tx) => {
+    for (const name of names) {
+      if (!existingNames.has(name)) {
+        tx.insert(schema.noteGroups).values({
+          id: createNoteGroupId(),
+          name,
+          order: nextOrder,
+        }).run();
+        nextOrder += 1;
+      }
+    }
+  });
+}
+
+export function getNoteGroupOrders(): NoteGroupOrder[] {
+  syncNoteGroupOrdersWithNotes();
+  const db = getDb();
+  return db
+    .select({ name: schema.noteGroups.name, order: schema.noteGroups.order })
+    .from(schema.noteGroups)
+    .orderBy(asc(schema.noteGroups.order), asc(schema.noteGroups.name))
+    .all();
+}
+
+export function saveNoteGroupOrders(groups: Array<{ name: string; order?: number }>) {
+  const db = getDb();
+  const normalizedGroups = groups
+    .map((group) => ({
+      name: normalizeNoteGroupName(group.name),
+      order: Number.isFinite(group.order) ? Number(group.order) : undefined,
+    }))
+    .filter((group, index, arr) => arr.findIndex((g) => g.name === group.name) === index);
+
+  db.transaction((tx) => {
+    normalizedGroups.forEach((group, index) => {
+      const nextOrder = group.order ?? index;
+      const existing = tx
+        .select({ id: schema.noteGroups.id })
+        .from(schema.noteGroups)
+        .where(eq(schema.noteGroups.name, group.name))
+        .get();
+
+      if (existing) {
+        tx.update(schema.noteGroups)
+          .set({ order: nextOrder })
+          .where(eq(schema.noteGroups.name, group.name))
+          .run();
+      } else {
+        tx.insert(schema.noteGroups).values({
+          id: createNoteGroupId(),
+          name: group.name,
+          order: nextOrder,
+        }).run();
+      }
+    });
+  });
 }
 
 export function getAllNotes(): Note[] {
@@ -699,14 +824,29 @@ export function getAllNotesAdmin(): NoteFull[] {
 }
 
 export function getNotesByGroup(): NoteGroup[] {
+  syncNoteGroupOrdersWithNotes();
   const all = getAllNotes();
   const groupMap = new Map<string, Note[]>();
   for (const note of all) {
-    const g = note.group || "未分类";
+    const g = normalizeNoteGroupName(note.group);
     if (!groupMap.has(g)) groupMap.set(g, []);
     groupMap.get(g)!.push(note);
   }
-  return Array.from(groupMap.entries()).map(([name, notes]) => ({ name, notes }));
+
+  const groupOrderMap = new Map(
+    getNoteGroupOrders().map((group) => [group.name, group.order])
+  );
+
+  return Array.from(groupMap.entries())
+    .map(([name, notes], index) => ({
+      name,
+      notes,
+      order: groupOrderMap.get(name) ?? (9999 + index),
+    }))
+    .sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return a.name.localeCompare(b.name, "zh-CN");
+    });
 }
 
 export function getNoteBySlug(slug: string): NoteFull | null {
@@ -731,6 +871,7 @@ export function createNote(note: {
   order?: number;
 }): NoteFull {
   const db = getDb();
+  const normalizedGroup = normalizeNoteGroupName(note.group);
   const id = Date.now().toString() + Math.random().toString(36).slice(2, 6);
   const now = new Date().toISOString();
   db.insert(schema.notes).values({
@@ -739,13 +880,14 @@ export function createNote(note: {
     title: note.title,
     description: note.description,
     content: note.content,
-    group: note.group,
+    group: normalizedGroup,
     date: note.date,
     tags: note.tags,
     order: note.order ?? 999,
     createdAt: now,
     updatedAt: now,
   }).run();
+  ensureNoteGroupExists(normalizedGroup);
   return getNoteBySlug(note.slug)!;
 }
 
@@ -770,12 +912,18 @@ export function updateNote(
   if (updates.title !== undefined) u.title = updates.title;
   if (updates.description !== undefined) u.description = updates.description;
   if (updates.content !== undefined) u.content = updates.content;
-  if (updates.group !== undefined) u.group = updates.group;
+  if (updates.group !== undefined) {
+    u.group = normalizeNoteGroupName(updates.group);
+  }
   if (updates.date !== undefined) u.date = updates.date;
   if (updates.tags !== undefined) u.tags = updates.tags;
   if (updates.order !== undefined) u.order = updates.order;
 
   db.update(schema.notes).set(u).where(eq(schema.notes.id, id)).run();
+
+  if (u.group !== undefined) {
+    ensureNoteGroupExists(u.group);
+  }
 }
 
 export function deleteNote(id: string) {

@@ -32,6 +32,11 @@ export interface NoteAdmin {
   updatedAt: string;
 }
 
+export interface NoteGroupOrder {
+  name: string;
+  order: number;
+}
+
 export interface GuestbookEntry {
   id: number;
   nickname: string;

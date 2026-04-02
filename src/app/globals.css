@@ -82,6 +82,34 @@ body {
   font-size: 16px;
 }
 
+/* Tailwind preflight 会把 ul/ol 的 marker 置空，这里显式恢复 markdown 列表符号 */
+.markdown-body ul {
+  list-style: disc;
+}
+
+.markdown-body ol {
+  list-style: decimal;
+}
+
+.markdown-body ul ul {
+  list-style: circle;
+}
+
+.markdown-body ul ul ul {
+  list-style: square;
+}
+
+.markdown-body li::marker {
+  color: var(--foreground);
+}
+
+.markdown-body hr,
+.wmde-markdown hr {
+  height: 1px;
+  border: 0;
+  background-color: var(--border);
+}
+
 /* Dark-mode prose readability (leave code block colors to Shiki rules below) */
 .dark .markdown-body,
 .dark .markdown-body p,

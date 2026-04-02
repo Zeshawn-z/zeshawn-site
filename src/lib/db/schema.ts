@@ -95,6 +95,12 @@ export const notes = sqliteTable("notes", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+export const noteGroups = sqliteTable("note_groups", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  order: integer("order").notNull().default(999),
+});
+
 export const pdfs = sqliteTable("pdfs", {
   id: text("id").primaryKey(),
   filename: text("filename").notNull(),

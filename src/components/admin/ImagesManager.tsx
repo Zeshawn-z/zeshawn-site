@@ -36,7 +36,7 @@ export default function ImagesManager() {
   };
 
   const cleanupUnused = async () => {
-    if (!confirm("将扫描所有文章内容，删除未被任何文章引用的图片。确定继续？")) return;
+    if (!confirm("将扫描博客、笔记与站点配置（含头像/Logo）引用，删除未被使用的图片。确定继续？")) return;
     setCleaning(true);
     setCleanResult(null);
     try {
