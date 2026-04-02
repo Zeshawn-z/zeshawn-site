@@ -21,7 +21,7 @@ import {
   Search,
   BookOpen,
 } from "lucide-react";
-import type { Tab, PostAdmin, NoteAdmin, GuestbookEntry, CommentAdmin, Project, Experience, SkillGroup } from "@/components/admin/types";
+import type { Tab, PostAdmin, NoteAdmin, NoteGroupOrder, GuestbookEntry, CommentAdmin, Project, Experience, SkillGroup } from "@/components/admin/types";
 import PostsEditor from "@/components/admin/PostsEditor";
 import NotesEditor from "@/components/admin/NotesEditor";
 import CommentsManager from "@/components/admin/CommentsManager";
@@ -72,6 +72,7 @@ export default function AdminDashboard() {
   const [skills, setSkills] = useState<SkillGroup[]>([]);
   const [posts, setPosts] = useState<PostAdmin[]>([]);
   const [notes, setNotes] = useState<NoteAdmin[]>([]);
+  const [noteGroupOrders, setNoteGroupOrders] = useState<NoteGroupOrder[]>([]);
   const [guestbookEntries, setGuestbookEntries] = useState<GuestbookEntry[]>([]);
   const [commentsData, setCommentsData] = useState<CommentAdmin[]>([]);
   const [commentFilterSlug, setCommentFilterSlug] = useState<string>("");
@@ -120,12 +121,13 @@ export default function AdminDashboard() {
 
   // Load data
   const loadData = useCallback(async () => {
-    const [p, e, s, posts, notes, gb, cm, cfg] = await Promise.all([
+    const [p, e, s, posts, notes, noteGroups, gb, cm, cfg] = await Promise.all([
       fetch("/api/admin/projects").then((r) => r.json()),
       fetch("/api/admin/experiences").then((r) => r.json()),
       fetch("/api/admin/skills").then((r) => r.json()),
       fetch("/api/admin/posts").then((r) => r.json()),
       fetch("/api/admin/notes").then((r) => r.json()),
+      fetch("/api/admin/notes/groups").then((r) => r.json()),
       fetch("/api/guestbook").then((r) => r.json()),
       fetch("/api/admin/comments").then((r) => r.json()),
       fetch("/api/admin/config").then((r) => r.json()),
@@ -135,6 +137,7 @@ export default function AdminDashboard() {
     setSkills(s);
     setPosts(posts);
     setNotes(notes);
+    setNoteGroupOrders(noteGroups || []);
     setGuestbookEntries(gb.entries || []);
     setCommentsData(cm || []);
     setSiteConfigData(cfg);
@@ -437,6 +440,8 @@ export default function AdminDashboard() {
             <NotesEditor
               notes={notes}
               setNotes={setNotes}
+              groupOrders={noteGroupOrders}
+              setGroupOrders={setNoteGroupOrders}
               showIndex={contentShowIndex}
               initialEditId={initialNoteEditId}
             />

@@ -106,6 +106,11 @@ export function getDb() {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS note_groups (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      "order" INTEGER NOT NULL DEFAULT 999
+    );
   `);
 
   // Step 2: Migration — add columns to existing tables if missing
