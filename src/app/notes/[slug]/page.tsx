@@ -4,6 +4,7 @@ import { Calendar, Tag } from "lucide-react";
 import { getNoteBySlug, getNotesByGroup } from "@/lib/db/data";
 import { renderMarkdown } from "@/lib/content/markdown";
 import CopyCodeButton from "@/components/common/CopyCodeButton";
+import MermaidRenderer from "@/components/common/MermaidRenderer";
 import NotesIndexMenu from "@/components/notes/NotesIndexMenu";
 
 interface Props {
@@ -87,6 +88,7 @@ export default async function NoteDetailPage({ params }: Props) {
             className="markdown-body"
             dangerouslySetInnerHTML={{ __html: contentHtml }}
           />
+          <MermaidRenderer />
           <CopyCodeButton />
         </article>
       </div>
