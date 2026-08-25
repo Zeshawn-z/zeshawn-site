@@ -213,6 +213,28 @@ body {
   overflow-y: hidden;
 }
 
+.markdown-body .mermaid-chart {
+  margin: 1rem 0;
+  overflow-x: auto;
+  border-radius: 6px;
+  background: var(--card);
+  padding: 1rem;
+  text-align: center;
+}
+
+.markdown-body .mermaid-chart svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-body .mermaid-chart-error {
+  text-align: left;
+}
+
+.markdown-body .mermaid-chart-error pre {
+  margin: 0;
+}
+
 /* Selection color */
 ::selection {
   background: var(--accent);

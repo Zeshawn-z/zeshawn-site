@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, Clock, FileText } from "lucide-react";
 import { getPostBySlug } from "@/lib/db/data";
 import { renderMarkdown } from "@/lib/content/markdown";
 import CopyCodeButton from "@/components/common/CopyCodeButton";
+import MermaidRenderer from "@/components/common/MermaidRenderer";
 import BlogComments from "@/components/blog/BlogComments";
 
 interface Props {
@@ -121,6 +122,7 @@ export default async function BlogPostPage({ params }: Props) {
               className="markdown-body"
               dangerouslySetInnerHTML={{ __html: contentHtml }}
             />
+            <MermaidRenderer />
             <CopyCodeButton />
           </>
         )}
