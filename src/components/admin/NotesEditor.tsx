@@ -5,6 +5,7 @@ import { Plus, Trash2, Save, Loader2, Edit3, ArrowLeft, ArrowUp, ArrowDown } fro
 import type { NoteAdmin, NoteGroupOrder } from "./types";
 import { FieldCommaInput, FieldInput } from "./FormFields";
 import MdEditor from "@/components/admin/MdEditor";
+import { requireOk } from "@/lib/admin/client-api";
 
 function parseCommaSeparated(input: string): string[] {
   return input
@@ -115,24 +116,28 @@ export default function NotesEditor({
   };
 
   const createNote = async () => {
-    const slug = "new-note-" + Date.now();
-    const res = await fetch("/api/admin/notes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        slug,
-        title: "新笔记",
-        description: "",
-        content: "# 新笔记\n\n在这里开始写内容。",
-        group: "未分类",
-        date: new Date().toISOString().slice(0, 10),
-        tags: [],
-        order: notes.length,
-      }),
-    });
-    const note = await res.json();
-    setNotes([note, ...notes]);
-    setEditing(note);
+    try {
+      const slug = "new-note-" + Date.now();
+      const res = await requireOk(await fetch("/api/admin/notes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          title: "新笔记",
+          description: "",
+          content: "# 新笔记\n\n在这里开始写内容。",
+          group: "未分类",
+          date: new Date().toISOString().slice(0, 10),
+          tags: [],
+          order: notes.length,
+        }),
+      }), "创建笔记失败");
+      const note = await res.json();
+      setNotes([note, ...notes]);
+      setEditing(note);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "创建笔记失败");
+    }
   };
 
   const saveNote = async () => {
@@ -146,7 +151,7 @@ export default function NotesEditor({
         order: Number.isFinite(editing.order) ? editing.order : 999,
       };
 
-      await fetch(`/api/admin/notes/${editing.id}`, {
+      const response = await requireOk(await fetch(`/api/admin/notes/${editing.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -158,11 +163,14 @@ export default function NotesEditor({
           date: normalizedEditing.date,
           tags: normalizedEditing.tags,
           order: normalizedEditing.order,
+          expectedUpdatedAt: editing.updatedAt,
         }),
-      });
-
-      setNotes(notes.map((n) => (n.id === editing.id ? normalizedEditing : n)));
-      setEditing(normalizedEditing);
+      }), "保存笔记失败");
+      const savedNote = await response.json() as NoteAdmin;
+      setNotes(notes.map((n) => (n.id === editing.id ? savedNote : n)));
+      setEditing(savedNote);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "保存笔记失败");
     } finally {
       setSavingNote(false);
     }
@@ -170,9 +178,13 @@ export default function NotesEditor({
 
   const deleteNote = async (id: string) => {
     if (!confirm("确定删除这条笔记？")) return;
-    await fetch(`/api/admin/notes/${id}`, { method: "DELETE" });
-    setNotes(notes.filter((n) => n.id !== id));
-    if (editing?.id === id) setEditing(null);
+    try {
+      await requireOk(await fetch(`/api/admin/notes/${id}`, { method: "DELETE" }), "删除笔记失败");
+      setNotes(notes.filter((n) => n.id !== id));
+      if (editing?.id === id) setEditing(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "删除笔记失败");
+    }
   };
 
   if (editing) {

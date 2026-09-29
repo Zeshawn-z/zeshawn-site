@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Trash2, Loader2, MessageCircle } from "lucide-react";
 import type { CommentAdmin } from "./types";
+import { requireOk } from "@/lib/admin/client-api";
 
 export default function CommentsManager({
   comments,
@@ -16,16 +17,19 @@ export default function CommentsManager({
   setFilterSlug: (s: string) => void;
 }) {
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const loadComments = useCallback(async (slug?: string) => {
     setLoading(true);
+    setLoadError("");
     try {
       const url = slug ? `/api/admin/comments?slug=${encodeURIComponent(slug)}` : "/api/admin/comments";
-      const res = await fetch(url);
+      const res = await requireOk(await fetch(url, { cache: "no-store" }), "评论加载失败");
       const data = await res.json();
-      setComments(data || []);
-    } catch {
-      // ignore
+      if (!Array.isArray(data)) throw new Error("评论数据格式错误");
+      setComments(data);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "评论加载失败");
     } finally {
       setLoading(false);
     }
@@ -37,8 +41,12 @@ export default function CommentsManager({
 
   const deleteEntry = async (id: number) => {
     if (!confirm("确定删除这条评论？（回复也会一起删除）")) return;
-    await fetch(`/api/admin/comments/${id}`, { method: "DELETE" });
-    setComments(comments.filter((c) => c.id !== id && c.parentId !== id));
+    try {
+      await requireOk(await fetch(`/api/admin/comments/${id}`, { method: "DELETE" }), "删除评论失败");
+      setComments(comments.filter((c) => c.id !== id && c.parentId !== id));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "删除评论失败");
+    }
   };
 
   const clearFilter = () => {
@@ -47,6 +55,7 @@ export default function CommentsManager({
 
   return (
     <div className="space-y-4">
+      {loadError && <div role="alert" className="text-sm text-red-500">{loadError} <button onClick={() => loadComments(filterSlug || undefined)} className="underline">重试</button></div>}
       {filterSlug && (
         <div className="flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5">
           <span className="text-sm text-muted">筛选文章：</span>

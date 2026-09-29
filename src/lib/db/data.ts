@@ -204,11 +204,15 @@ export function updatePost(
     tags?: string[];
     published?: boolean;
     commentsEnabled?: boolean;
-  }
+  },
+  expectedUpdatedAt: string
 ) {
   const db = getDb();
+  const now = new Date().toISOString();
   const updates: Partial<typeof schema.posts.$inferInsert> = {
-    updatedAt: new Date().toISOString(),
+    updatedAt: now === expectedUpdatedAt
+      ? new Date(Date.now() + 1).toISOString()
+      : now,
   };
   if (post.slug !== undefined) updates.slug = post.slug;
   if (post.title !== undefined) updates.title = post.title;
@@ -221,7 +225,13 @@ export function updatePost(
   if (post.published !== undefined) updates.published = post.published;
   if (post.commentsEnabled !== undefined) updates.commentsEnabled = post.commentsEnabled;
 
-  db.update(schema.posts).set(updates).where(eq(schema.posts.id, id)).run();
+  const result = db.update(schema.posts)
+    .set(updates)
+    .where(and(eq(schema.posts.id, id), eq(schema.posts.updatedAt, expectedUpdatedAt)))
+    .run();
+  if (result.changes === 0) return null;
+  const row = db.select().from(schema.posts).where(eq(schema.posts.id, id)).get();
+  return row ? rowToPostFull(row) : null;
 }
 
 export function deletePost(id: string) {
@@ -902,11 +912,15 @@ export function updateNote(
     date?: string;
     tags?: string[];
     order?: number;
-  }
+  },
+  expectedUpdatedAt: string
 ) {
   const db = getDb();
+  const now = new Date().toISOString();
   const u: Partial<typeof schema.notes.$inferInsert> = {
-    updatedAt: new Date().toISOString(),
+    updatedAt: now === expectedUpdatedAt
+      ? new Date(Date.now() + 1).toISOString()
+      : now,
   };
   if (updates.slug !== undefined) u.slug = updates.slug;
   if (updates.title !== undefined) u.title = updates.title;
@@ -919,11 +933,17 @@ export function updateNote(
   if (updates.tags !== undefined) u.tags = updates.tags;
   if (updates.order !== undefined) u.order = updates.order;
 
-  db.update(schema.notes).set(u).where(eq(schema.notes.id, id)).run();
+  const result = db.update(schema.notes)
+    .set(u)
+    .where(and(eq(schema.notes.id, id), eq(schema.notes.updatedAt, expectedUpdatedAt)))
+    .run();
+  if (result.changes === 0) return null;
 
   if (u.group !== undefined) {
     ensureNoteGroupExists(u.group);
   }
+  const row = db.select().from(schema.notes).where(eq(schema.notes.id, id)).get();
+  return row ? rowToNoteFull(row) : null;
 }
 
 export function deleteNote(id: string) {

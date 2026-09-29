@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Trash2, Loader2, X, ImageIcon } from "lucide-react";
 import type { ImageItem } from "./types";
+import { requireOk } from "@/lib/admin/client-api";
 
 export default function ImagesManager() {
   const [images, setImages] = useState<ImageItem[]>([]);
@@ -10,15 +11,18 @@ export default function ImagesManager() {
   const [preview, setPreview] = useState<ImageItem | null>(null);
   const [cleaning, setCleaning] = useState(false);
   const [cleanResult, setCleanResult] = useState<{ deleted: number } | null>(null);
+  const [loadError, setLoadError] = useState("");
 
   const loadImages = useCallback(async () => {
     setLoading(true);
+    setLoadError("");
     try {
-      const res = await fetch("/api/admin/images");
+      const res = await requireOk(await fetch("/api/admin/images", { cache: "no-store" }), "图片加载失败");
       const data = await res.json();
-      setImages(data || []);
-    } catch {
-      // ignore
+      if (!Array.isArray(data)) throw new Error("图片数据格式错误");
+      setImages(data);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "图片加载失败");
     } finally {
       setLoading(false);
     }
@@ -30,9 +34,13 @@ export default function ImagesManager() {
 
   const deleteOne = async (id: string) => {
     if (!confirm("确定删除这张图片？如果有文章正在引用，将导致图片无法显示。")) return;
-    await fetch(`/api/admin/images?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-    setImages(images.filter((img) => img.id !== id));
-    if (preview?.id === id) setPreview(null);
+    try {
+      await requireOk(await fetch(`/api/admin/images?id=${encodeURIComponent(id)}`, { method: "DELETE" }), "删除图片失败");
+      setImages(images.filter((img) => img.id !== id));
+      if (preview?.id === id) setPreview(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "删除图片失败");
+    }
   };
 
   const cleanupUnused = async () => {
@@ -40,12 +48,12 @@ export default function ImagesManager() {
     setCleaning(true);
     setCleanResult(null);
     try {
-      const res = await fetch("/api/admin/images?action=cleanup", { method: "POST" });
+      const res = await requireOk(await fetch("/api/admin/images?action=cleanup", { method: "POST" }), "清理图片失败");
       const data = await res.json();
       setCleanResult({ deleted: data.deleted });
       await loadImages();
-    } catch {
-      // ignore
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "清理图片失败");
     } finally {
       setCleaning(false);
     }
@@ -63,6 +71,10 @@ export default function ImagesManager() {
         <Loader2 size={20} className="animate-spin text-muted" />
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div role="alert" className="py-12 text-center text-sm text-red-500">{loadError} <button onClick={loadImages} className="underline">重试</button></div>;
   }
 
   return (

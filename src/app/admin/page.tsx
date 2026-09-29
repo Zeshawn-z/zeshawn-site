@@ -31,6 +31,21 @@ import ProjectsEditor from "@/components/admin/ProjectsEditor";
 import ExperiencesEditor from "@/components/admin/ExperiencesEditor";
 import SkillsEditor from "@/components/admin/SkillsEditor";
 import ImagesManager from "@/components/admin/ImagesManager";
+import { requireOk } from "@/lib/admin/client-api";
+
+type BulkKey = "projects" | "experiences" | "skills" | "config";
+type BulkVersions = Record<BulkKey, string>;
+
+async function loadAdminResource(url: string, label: string, kind: "array" | "object", versioned = false) {
+  const response = await requireOk(await fetch(url, { cache: "no-store" }), `${label}加载失败`);
+  const data: unknown = await response.json();
+  if (kind === "array" ? !Array.isArray(data) : !data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error(`${label}返回的数据格式错误`);
+  }
+  const revision = response.headers.get("X-Data-Revision");
+  if (versioned && !revision) throw new Error(`${label}缺少数据版本`);
+  return { data, revision: revision ?? "" };
+}
 
 function parseCommaSeparated(input: string): string[] {
   return input
@@ -45,6 +60,11 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("posts");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
+  const [loadError, setLoadError] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [versions, setVersions] = useState<BulkVersions>({ projects: "", experiences: "", skills: "", config: "" });
+  const [baseline, setBaseline] = useState<BulkVersions | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarPlaceholderRef = useRef<HTMLDivElement>(null);
   const [sidebarLeft, setSidebarLeft] = useState<number | null>(null);
@@ -121,26 +141,43 @@ export default function AdminDashboard() {
 
   // Load data
   const loadData = useCallback(async () => {
-    const [p, e, s, posts, notes, noteGroups, gb, cm, cfg] = await Promise.all([
-      fetch("/api/admin/projects").then((r) => r.json()),
-      fetch("/api/admin/experiences").then((r) => r.json()),
-      fetch("/api/admin/skills").then((r) => r.json()),
-      fetch("/api/admin/posts").then((r) => r.json()),
-      fetch("/api/admin/notes").then((r) => r.json()),
-      fetch("/api/admin/notes/groups").then((r) => r.json()),
-      fetch("/api/guestbook").then((r) => r.json()),
-      fetch("/api/admin/comments").then((r) => r.json()),
-      fetch("/api/admin/config").then((r) => r.json()),
-    ]);
-    setProjects(p);
-    setExperiences(e);
-    setSkills(s);
-    setPosts(posts);
-    setNotes(notes);
-    setNoteGroupOrders(noteGroups || []);
-    setGuestbookEntries(gb.entries || []);
-    setCommentsData(cm || []);
-    setSiteConfigData(cfg);
+    setLoadState("loading");
+    setLoadError("");
+    try {
+      const [p, e, s, posts, notes, noteGroups, gb, cm, cfg] = await Promise.all([
+        loadAdminResource("/api/admin/projects", "项目", "array", true),
+        loadAdminResource("/api/admin/experiences", "经历", "array", true),
+        loadAdminResource("/api/admin/skills", "技能", "array", true),
+        loadAdminResource("/api/admin/posts", "博客", "array"),
+        loadAdminResource("/api/admin/notes", "笔记", "array"),
+        loadAdminResource("/api/admin/notes/groups", "笔记分组", "array"),
+        loadAdminResource("/api/guestbook", "留言", "object"),
+        loadAdminResource("/api/admin/comments", "评论", "array"),
+        loadAdminResource("/api/admin/config", "设置", "object", true),
+      ]);
+      const guestbook = gb.data as { entries?: unknown };
+      if (!Array.isArray(guestbook.entries)) throw new Error("留言返回的数据格式错误");
+      setProjects(p.data as Project[]);
+      setExperiences(e.data as Experience[]);
+      setSkills(s.data as SkillGroup[]);
+      setPosts(posts.data as PostAdmin[]);
+      setNotes(notes.data as NoteAdmin[]);
+      setNoteGroupOrders(noteGroups.data as NoteGroupOrder[]);
+      setGuestbookEntries(guestbook.entries as GuestbookEntry[]);
+      setCommentsData(cm.data as CommentAdmin[]);
+      setSiteConfigData(cfg.data as Record<string, string>);
+      setVersions({ projects: p.revision, experiences: e.revision, skills: s.revision, config: cfg.revision });
+      setBaseline({
+        projects: JSON.stringify(p.data),
+        experiences: JSON.stringify(e.data),
+        skills: JSON.stringify(s.data),
+        config: JSON.stringify(cfg.data),
+      });
+      setLoadState("ready");
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "后台数据加载失败");
+      setLoadState("error");
+    }
   }, []);
 
   useEffect(() => {
@@ -152,48 +189,69 @@ export default function AdminDashboard() {
     router.push("/admin/login");
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const normalizedProjects = projects.map((p) => ({
-        ...p,
-        tags: parseCommaSeparated((p.tags || []).join(",")),
-      }));
-      const normalizedExperiences = experiences.map((e) => ({
-        ...e,
-        tags: parseCommaSeparated((e.tags || []).join(",")),
-      }));
-      const normalizedSkills = skills.map((s) => ({
-        ...s,
-        skills: parseCommaSeparated((s.skills || []).join(",")),
-      }));
+  const normalizedProjects = projects.map((p) => ({ ...p, tags: parseCommaSeparated((p.tags || []).join(",")) }));
+  const normalizedExperiences = experiences.map((e) => ({ ...e, tags: parseCommaSeparated((e.tags || []).join(",")) }));
+  const normalizedSkills = skills.map((s) => ({ ...s, skills: parseCommaSeparated((s.skills || []).join(",")) }));
+  const currentSnapshots: BulkVersions = {
+    projects: JSON.stringify(normalizedProjects),
+    experiences: JSON.stringify(normalizedExperiences),
+    skills: JSON.stringify(normalizedSkills),
+    config: JSON.stringify(siteConfigData),
+  };
+  const latestSnapshotsRef = useRef(currentSnapshots);
+  latestSnapshotsRef.current = currentSnapshots;
+  const changedKeys: BulkKey[] = baseline
+    ? (["projects", "experiences", "skills", "config"] as BulkKey[]).filter((key) => currentSnapshots[key] !== baseline[key])
+    : [];
 
-      await Promise.all([
-        fetch("/api/admin/projects", {
+  const handleSave = async () => {
+    if (loadState !== "ready" || saving || changedKeys.length === 0) return;
+    setSaving(true);
+    setSaved(false);
+    setSaveError("");
+    try {
+      const payloads: Record<BulkKey, unknown> = {
+        projects: normalizedProjects,
+        experiences: normalizedExperiences,
+        skills: normalizedSkills,
+        config: siteConfigData,
+      };
+      const labels: Record<BulkKey, string> = { projects: "项目", experiences: "经历", skills: "技能", config: "设置" };
+      const results = await Promise.allSettled(changedKeys.map(async (key) => {
+        const response = await requireOk(await fetch(`/api/admin/${key}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(normalizedProjects),
-        }),
-        fetch("/api/admin/experiences", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(normalizedExperiences),
-        }),
-        fetch("/api/admin/skills", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(normalizedSkills),
-        }),
-        fetch("/api/admin/config", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(siteConfigData),
-        }),
-      ]);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      console.error("Save failed:", err);
+          headers: { "Content-Type": "application/json", "If-Match": versions[key] },
+          body: JSON.stringify(payloads[key]),
+        }), `${labels[key]}保存失败`);
+        const revision = response.headers.get("X-Data-Revision");
+        if (!revision) throw new Error(`${labels[key]}保存后缺少数据版本`);
+        return { key, revision, snapshot: currentSnapshots[key] };
+      }));
+      const successful = results.flatMap((result) => result.status === "fulfilled" ? [result.value] : []);
+      setBaseline((previous) => {
+        if (!previous) return previous;
+        const next = { ...previous };
+        successful.forEach(({ key, snapshot }) => { next[key] = snapshot; });
+        return next;
+      });
+      setVersions((previous) => {
+        const next = { ...previous };
+        successful.forEach(({ key, revision }) => { next[key] = revision; });
+        return next;
+      });
+      const failures = results.flatMap((result, index) =>
+        result.status === "rejected"
+          ? [`${labels[changedKeys[index]]}：${result.reason instanceof Error ? result.reason.message : "保存失败"}`]
+          : []
+      );
+      if (failures.length > 0) {
+        setSaveError(`部分内容未保存：${failures.join("；")}`);
+      } else if (changedKeys.some((key) => latestSnapshotsRef.current[key] !== currentSnapshots[key])) {
+        setSaveError("保存期间又有修改，请再次保存剩余改动");
+      } else {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
     } finally {
       setSaving(false);
     }
@@ -203,6 +261,19 @@ export default function AdminDashboard() {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <Loader2 size={24} className="animate-spin text-muted" />
+      </div>
+    );
+  }
+
+  if (loadState !== "ready") {
+    return (
+      <div className="mx-auto flex min-h-[50vh] max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
+        {loadState === "loading" ? <Loader2 size={24} className="animate-spin text-muted" /> : (
+          <>
+            <p className="text-sm text-red-500">{loadError}</p>
+            <button onClick={loadData} className="rounded-lg bg-accent px-4 py-2 text-sm text-white">重新加载</button>
+          </>
+        )}
       </div>
     );
   }
@@ -228,6 +299,11 @@ export default function AdminDashboard() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 lg:px-6">
+      {saveError && (
+        <div role="alert" className="mb-4 rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+          {saveError}
+        </div>
+      )}
       {/* ─── Mobile: overlay backdrop + drawer ─── */}
       {sidebarOpen && (
         <div
@@ -296,7 +372,8 @@ export default function AdminDashboard() {
         <div className="border-t border-border p-3 space-y-2">
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || changedKeys.length === 0}
+            title="保存项目、经历、技能和设置的改动"
             className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
@@ -323,7 +400,8 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || changedKeys.length === 0}
+                title="保存项目、经历、技能和设置的改动"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
@@ -386,7 +464,8 @@ export default function AdminDashboard() {
                   <div className="mt-4 space-y-2 border-t border-border pt-4">
                     <button
                       onClick={handleSave}
-                      disabled={saving}
+                      disabled={saving || changedKeys.length === 0}
+                      title="保存项目、经历、技能和设置的改动"
                       className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                     >
                       {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}

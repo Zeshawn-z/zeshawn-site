@@ -5,6 +5,7 @@ import { Plus, Trash2, Save, Loader2, Eye, EyeOff, Edit3, MessageCircle, ArrowLe
 import type { PostAdmin } from "./types";
 import { FieldCommaInput, FieldInput } from "./FormFields";
 import MdEditor from "@/components/admin/MdEditor";
+import { requireOk } from "@/lib/admin/client-api";
 
 function parseCommaSeparated(input: string): string[] {
   return input
@@ -64,31 +65,35 @@ export default function PostsEditor({
   }, [posts, query, typeFilter, tagFilter]);
 
   const createPost = async (contentType: "markdown" | "pdf" = "markdown") => {
-    const slug = "new-post-" + Date.now();
-    const res = await fetch("/api/admin/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        slug,
-        title: contentType === "pdf" ? "新 PDF 文章" : "新文章",
-        description: "",
-        content: contentType === "pdf" ? "" : "",
-        contentType,
-        date: new Date().toISOString().slice(0, 10),
-        tags: [],
-        published: false,
-      }),
-    });
-    const post = await res.json();
-    setPosts([post, ...posts]);
-    setEditing(post);
+    try {
+      const slug = "new-post-" + Date.now();
+      const res = await requireOk(await fetch("/api/admin/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          title: contentType === "pdf" ? "新 PDF 文章" : "新文章",
+          description: "",
+          content: "",
+          contentType,
+          date: new Date().toISOString().slice(0, 10),
+          tags: [],
+          published: false,
+        }),
+      }), "创建文章失败");
+      const post = await res.json();
+      setPosts([post, ...posts]);
+      setEditing(post);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "创建文章失败");
+    }
   };
 
   const savePost = async () => {
     if (!editing) return;
     setSavingPost(true);
     try {
-      await fetch(`/api/admin/posts/${editing.id}`, {
+      const response = await requireOk(await fetch(`/api/admin/posts/${editing.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -102,14 +107,14 @@ export default function PostsEditor({
           tags: parseCommaSeparated((editing.tags || []).join(",")),
           published: editing.published,
           commentsEnabled: editing.commentsEnabled,
+          expectedUpdatedAt: editing.updatedAt,
         }),
-      });
-      const normalizedEditing = {
-        ...editing,
-        tags: parseCommaSeparated((editing.tags || []).join(",")),
-      };
-      setPosts(posts.map((p) => (p.id === editing.id ? normalizedEditing : p)));
-      setEditing(normalizedEditing);
+      }), "保存文章失败");
+      const savedPost = await response.json() as PostAdmin;
+      setPosts(posts.map((p) => (p.id === editing.id ? savedPost : p)));
+      setEditing(savedPost);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "保存文章失败");
     } finally {
       setSavingPost(false);
     }
@@ -157,20 +162,28 @@ export default function PostsEditor({
 
   const deletePost = async (id: string) => {
     if (!confirm("确定删除这篇文章？")) return;
-    await fetch(`/api/admin/posts/${id}`, { method: "DELETE" });
-    setPosts(posts.filter((p) => p.id !== id));
-    if (editing?.id === id) setEditing(null);
+    try {
+      await requireOk(await fetch(`/api/admin/posts/${id}`, { method: "DELETE" }), "删除文章失败");
+      setPosts(posts.filter((p) => p.id !== id));
+      if (editing?.id === id) setEditing(null);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "删除文章失败");
+    }
   };
 
   const togglePublish = async (post: PostAdmin) => {
-    const updated = { ...post, published: !post.published };
-    await fetch(`/api/admin/posts/${post.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ published: updated.published }),
-    });
-    setPosts(posts.map((p) => (p.id === post.id ? updated : p)));
-    if (editing?.id === post.id) setEditing(updated);
+    try {
+      const response = await requireOk(await fetch(`/api/admin/posts/${post.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ published: !post.published, expectedUpdatedAt: post.updatedAt }),
+      }), "更新发布状态失败");
+      const updated = await response.json() as PostAdmin;
+      setPosts(posts.map((p) => (p.id === post.id ? updated : p)));
+      if (editing?.id === post.id) setEditing(updated);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "更新发布状态失败");
+    }
   };
 
   // Editor view
