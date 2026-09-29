@@ -6,6 +6,9 @@ import Header from "@/components/layout/Header";
 import FooterSlot from "@/components/layout/FooterSlot";
 import "./globals.css";
 
+// Keep static snapshots, but regenerate them against the live database after deployment.
+export const revalidate = 5;
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],

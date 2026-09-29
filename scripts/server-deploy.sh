@@ -118,6 +118,19 @@ if [[ "$RESTART_MODE" == "restart" ]]; then
   echo "[3/3] Restarting service..."
   sudo systemctl restart "$SERVICE_NAME"
   sudo systemctl is-active --quiet "$SERVICE_NAME"
+
+  # Release artifacts are built without the production database. Let ISR expire
+  # the build-time snapshots, then request public pages to regenerate them here.
+  echo "Warming public static pages from the production database..."
+  sleep 6
+  for pass in 1 2 3; do
+    for route in / /projects /about /blog /notes /guestbook; do
+      curl --fail --silent --show-error --retry 5 --retry-delay 1 \
+        --retry-connrefused --max-time 20 --output /dev/null \
+        "http://127.0.0.1:3000$route"
+    done
+    if [[ "$pass" -lt 3 ]]; then sleep 2; fi
+  done
 else
   echo "[3/3] Skip restart (mode=$RESTART_MODE)."
 fi

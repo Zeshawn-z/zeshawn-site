@@ -83,12 +83,12 @@ export default function AdminDashboard() {
     const sync = () => {
       setIsTall(window.innerHeight >= 700);
       const el = sidebarPlaceholderRef.current;
-      if (el) setSidebarLeft(el.getBoundingClientRect().left);
+      setSidebarLeft(el ? el.getBoundingClientRect().left : null);
     };
     sync();
     window.addEventListener("resize", sync);
     return () => window.removeEventListener("resize", sync);
-  }, [authed]);
+  }, [authed, loadState, isTall]);
 
   // Data states
   const [projects, setProjects] = useState<Project[]>([]);
