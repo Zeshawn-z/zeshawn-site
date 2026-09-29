@@ -15,6 +15,8 @@ type HastElement = {
   value?: string;
 };
 
+export type MarkdownHeading = { id: string; text: string; level: number };
+
 function isMermaidCodeBlock(node: HastElement) {
   if (node.type !== "element" || node.tagName !== "pre") return false;
 
@@ -28,6 +30,34 @@ function isMermaidCodeBlock(node: HastElement) {
 function getTextContent(node: HastElement): string {
   if (typeof node.value === "string") return node.value;
   return node.children?.map(getTextContent).join("") ?? "";
+}
+
+function rehypeHeadings(headings: MarkdownHeading[]) {
+  return (tree: HastElement) => {
+    const usedIds = new Set<string>();
+    const visit = (node: HastElement) => {
+      const match = /^h([1-6])$/.exec(node.tagName ?? "");
+      if (node.type === "element" && match) {
+        const text = getTextContent(node).replace(/\s+/g, " ").trim();
+        if (text) {
+          const base = text
+            .normalize("NFKC")
+            .toLowerCase()
+            .replace(/[^\p{L}\p{N}\s-]/gu, "")
+            .trim()
+            .replace(/\s+/g, "-") || "heading";
+          let id = base;
+          let suffix = 2;
+          while (usedIds.has(id)) id = `${base}-${suffix++}`;
+          usedIds.add(id);
+          node.properties = { ...node.properties, id };
+          headings.push({ id, text, level: Number(match[1]) });
+        }
+      }
+      node.children?.forEach(visit);
+    };
+    visit(tree);
+  };
 }
 
 function rehypeMermaid() {
@@ -78,12 +108,17 @@ function rehypeMermaid() {
  * - remarkMath 不会处理代码块（```）和行内代码（`）内的 $ 符号
  * - Shiki 不会碰非代码块内容，所以 != 等符号不会被转义
  */
-export async function renderMarkdown(content: string): Promise<string> {
+export async function renderMarkdownWithHeadings(content: string): Promise<{
+  html: string;
+  headings: MarkdownHeading[];
+}> {
+  const headings: MarkdownHeading[] = [];
   const result = await unified()
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkMath)
     .use(remarkRehype)
+    .use(() => rehypeHeadings(headings))
     .use(rehypeKatex)
     .use(rehypeMermaid)
     .use(rehypeShiki, {
@@ -96,5 +131,9 @@ export async function renderMarkdown(content: string): Promise<string> {
     .use(rehypeStringify)
     .process(content);
 
-  return result.toString();
+  return { html: result.toString(), headings };
+}
+
+export async function renderMarkdown(content: string): Promise<string> {
+  return (await renderMarkdownWithHeadings(content)).html;
 }
