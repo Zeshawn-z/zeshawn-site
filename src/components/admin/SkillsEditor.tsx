@@ -2,7 +2,7 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import type { SkillGroup } from "./types";
-import { FieldInput, FieldCommaInput } from "./FormFields";
+import { FieldCommaInput } from "./FormFields";
 
 export default function SkillsEditor({ skills, onChange }: { skills: SkillGroup[]; onChange: (s: SkillGroup[]) => void }) {
   const addGroup = () => {
@@ -15,6 +15,7 @@ export default function SkillsEditor({ skills, onChange }: { skills: SkillGroup[
   };
 
   const removeGroup = (id: string) => {
+    if (!confirm("删除后会自动保存，确定删除这个技能分组？")) return;
     onChange(skills.filter((s) => s.id !== id));
   };
 

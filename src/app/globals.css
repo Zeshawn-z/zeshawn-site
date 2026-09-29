@@ -213,6 +213,10 @@ body {
   overflow-y: hidden;
 }
 
+.markdown-body :is(h1, h2, h3, h4, h5, h6)[id] {
+  scroll-margin-top: 6rem;
+}
+
 .markdown-body .mermaid-chart {
   margin: 1rem 0;
   overflow-x: auto;

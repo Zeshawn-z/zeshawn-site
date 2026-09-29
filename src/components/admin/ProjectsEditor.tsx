@@ -32,6 +32,7 @@ export default function ProjectsEditor({ projects, onChange, posts = [] }: Proje
   };
 
   const removeProject = (id: string) => {
+    if (!confirm("删除后会自动保存，确定删除这个项目？")) return;
     onChange(projects.filter((p) => p.id !== id));
   };
 

@@ -2,12 +2,17 @@
 
 import { Trash2, MessageSquare } from "lucide-react";
 import type { GuestbookEntry } from "./types";
+import { requireOk } from "@/lib/admin/client-api";
 
 export default function GuestbookManager({ entries, setEntries }: { entries: GuestbookEntry[]; setEntries: (e: GuestbookEntry[]) => void }) {
   const deleteEntry = async (id: number) => {
     if (!confirm("确定删除这条留言？")) return;
-    await fetch(`/api/admin/guestbook/${id}`, { method: "DELETE" });
-    setEntries(entries.filter((e) => e.id !== id));
+    try {
+      await requireOk(await fetch(`/api/admin/guestbook/${id}`, { method: "DELETE" }), "删除留言失败");
+      setEntries(entries.filter((e) => e.id !== id));
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "删除留言失败");
+    }
   };
 
   if (entries.length === 0) {

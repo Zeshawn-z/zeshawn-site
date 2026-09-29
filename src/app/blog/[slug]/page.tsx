@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Calendar, Clock, FileText } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, FileText, Pencil } from "lucide-react";
 import { getPostBySlug } from "@/lib/db/data";
-import { renderMarkdown } from "@/lib/content/markdown";
+import { renderMarkdownWithHeadings } from "@/lib/content/markdown";
+import { isAuthenticated } from "@/lib/auth/auth";
 import CopyCodeButton from "@/components/common/CopyCodeButton";
 import MermaidRenderer from "@/components/common/MermaidRenderer";
+import MarkdownToc from "@/components/common/MarkdownToc";
 import BlogComments from "@/components/blog/BlogComments";
 
 interface Props {
@@ -43,11 +45,14 @@ export default async function BlogPostPage({ params }: Props) {
   }
 
   const isPdf = post.contentType === "pdf";
-  const contentHtml = isPdf ? "" : await renderMarkdown(post.content);
+  const [rendered, canEdit] = await Promise.all([
+    isPdf ? Promise.resolve({ html: "", headings: [] }) : renderMarkdownWithHeadings(post.content),
+    isAuthenticated(),
+  ]);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 lg:px-8">
-      <article className="pb-16 pt-12">
+    <div className={`mx-auto px-6 lg:px-8 ${rendered.headings.length ? "max-w-6xl xl:grid xl:grid-cols-[minmax(0,1fr)_13rem] xl:gap-10" : "max-w-5xl"}`}>
+      <article className="min-w-0 pb-16 pt-12">
         {/* Back link */}
         <Link
           href="/blog"
@@ -86,6 +91,15 @@ export default async function BlogPostPage({ params }: Props) {
                 {post.readingTime} 阅读
               </span>
             )}
+            {canEdit && (
+              <Link
+                href={`/admin?tab=posts&edit=${encodeURIComponent(post.id)}`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs font-medium text-accent transition-colors hover:border-accent hover:bg-accent/5"
+              >
+                <Pencil size={13} />
+                编辑博客
+              </Link>
+            )}
           </div>
           {post.tags.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-1.5">
@@ -120,7 +134,7 @@ export default async function BlogPostPage({ params }: Props) {
           <>
             <div
               className="markdown-body"
-              dangerouslySetInnerHTML={{ __html: contentHtml }}
+              dangerouslySetInnerHTML={{ __html: rendered.html }}
             />
             <MermaidRenderer />
             <CopyCodeButton />
@@ -143,6 +157,7 @@ export default async function BlogPostPage({ params }: Props) {
           </Link>
         </div>
       </article>
+      {rendered.headings.length > 0 && <MarkdownToc headings={rendered.headings} />}
     </div>
   );
 }
