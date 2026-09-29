@@ -5,13 +5,27 @@ import { Plus, Trash2, Save, Loader2, Edit3, ArrowLeft, ArrowUp, ArrowDown } fro
 import type { NoteAdmin, NoteGroupOrder } from "./types";
 import { FieldCommaInput, FieldInput } from "./FormFields";
 import MdEditor from "@/components/admin/MdEditor";
-import { requireOk } from "@/lib/admin/client-api";
+import { HttpError, requireOk } from "@/lib/admin/client-api";
+import { useDebouncedAutosave } from "@/lib/admin/use-debounced-autosave";
 
 function parseCommaSeparated(input: string): string[] {
   return input
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+}
+
+function noteDraft(note: NoteAdmin): string {
+  return JSON.stringify({
+    slug: note.slug,
+    title: note.title,
+    description: note.description,
+    content: note.content,
+    group: note.group,
+    date: note.date,
+    tags: note.tags,
+    order: note.order,
+  });
 }
 
 export default function NotesEditor({
@@ -21,21 +35,37 @@ export default function NotesEditor({
   setGroupOrders,
   showIndex,
   initialEditId,
+  onPendingChange,
 }: {
   notes: NoteAdmin[];
-  setNotes: (n: NoteAdmin[]) => void;
+  setNotes: React.Dispatch<React.SetStateAction<NoteAdmin[]>>;
   groupOrders: NoteGroupOrder[];
   setGroupOrders: (groups: NoteGroupOrder[]) => void;
   showIndex: boolean;
   initialEditId?: string | null;
+  onPendingChange: (pending: boolean) => void;
 }) {
   const [editing, setEditing] = useState<NoteAdmin | null>(null);
   const [savingNote, setSavingNote] = useState(false);
+  const savingNoteRef = useRef(false);
+  const [saveError, setSaveError] = useState("");
+  const [autoSaveBlocked, setAutoSaveBlocked] = useState(false);
   const [query, setQuery] = useState("");
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const [savingGroupOrder, setSavingGroupOrder] = useState(false);
   const initialAppliedRef = useRef(false);
+
+  const persistedNote = editing ? notes.find((note) => note.id === editing.id) : null;
+  const draftKey = editing && persistedNote && noteDraft(editing) !== noteDraft(persistedNote)
+    ? `${editing.id}:${noteDraft(editing)}`
+    : null;
+  const latestEditingRef = useRef(editing);
+  latestEditingRef.current = editing;
+
+  useEffect(() => {
+    onPendingChange(Boolean(draftKey) || savingNote);
+  }, [draftKey, savingNote, onPendingChange]);
 
   useEffect(() => {
     if (initialAppliedRef.current || !initialEditId) return;
@@ -135,23 +165,29 @@ export default function NotesEditor({
       const note = await res.json();
       setNotes([note, ...notes]);
       setEditing(note);
+      setSaveError("");
+      setAutoSaveBlocked(false);
     } catch (error) {
       alert(error instanceof Error ? error.message : "创建笔记失败");
     }
   };
 
-  const saveNote = async () => {
-    if (!editing) return;
+  const saveNote = async (): Promise<boolean> => {
+    if (!editing || !draftKey || savingNoteRef.current) return false;
+    markAutoSaveAttempt();
+    savingNoteRef.current = true;
     setSavingNote(true);
+    setSaveError("");
+    const snapshot = editing;
     try {
       const normalizedEditing = {
-        ...editing,
-        tags: parseCommaSeparated((editing.tags || []).join(",")),
-        group: editing.group || "未分类",
-        order: Number.isFinite(editing.order) ? editing.order : 999,
+        ...snapshot,
+        tags: parseCommaSeparated((snapshot.tags || []).join(",")),
+        group: snapshot.group || "未分类",
+        order: Number.isFinite(snapshot.order) ? snapshot.order : 999,
       };
 
-      const response = await requireOk(await fetch(`/api/admin/notes/${editing.id}`, {
+      const response = await requireOk(await fetch(`/api/admin/notes/${snapshot.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -163,17 +199,41 @@ export default function NotesEditor({
           date: normalizedEditing.date,
           tags: normalizedEditing.tags,
           order: normalizedEditing.order,
-          expectedUpdatedAt: editing.updatedAt,
+          expectedUpdatedAt: snapshot.updatedAt,
         }),
       }), "保存笔记失败");
       const savedNote = await response.json() as NoteAdmin;
-      setNotes(notes.map((n) => (n.id === editing.id ? savedNote : n)));
-      setEditing(savedNote);
+      setNotes((current) => current.map((n) => (n.id === snapshot.id ? savedNote : n)));
+      setEditing((current) => {
+        if (!current || current.id !== snapshot.id) return current;
+        return noteDraft(current) === noteDraft(snapshot)
+          ? savedNote
+          : { ...current, updatedAt: savedNote.updatedAt };
+      });
+      setAutoSaveBlocked(false);
+      return latestEditingRef.current?.id === snapshot.id && noteDraft(latestEditingRef.current) === noteDraft(snapshot);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "保存笔记失败");
+      setSaveError(error instanceof Error ? error.message : "保存笔记失败");
+      if (error instanceof HttpError && [409, 428].includes(error.status)) setAutoSaveBlocked(true);
+      return false;
     } finally {
+      savingNoteRef.current = false;
       setSavingNote(false);
     }
+  };
+
+  const markAutoSaveAttempt = useDebouncedAutosave(
+    draftKey,
+    Boolean(editing) && !savingNote && !autoSaveBlocked,
+    saveNote
+  );
+
+  const leaveEditor = async () => {
+    if (savingNoteRef.current) return;
+    if (draftKey && !(await saveNote())) return;
+    setEditing(null);
+    setSaveError("");
+    setAutoSaveBlocked(false);
   };
 
   const deleteNote = async (id: string) => {
@@ -192,21 +252,24 @@ export default function NotesEditor({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => setEditing(null)}
+            onClick={leaveEditor}
+            disabled={savingNote}
             className="inline-flex items-center gap-1.5 text-sm leading-none text-muted transition-colors hover:text-foreground"
           >
             <ArrowLeft size={14} className="shrink-0" />
             返回列表
           </button>
           <button
-            onClick={saveNote}
-            disabled={savingNote}
+            onClick={() => { void saveNote(); }}
+            disabled={savingNote || !draftKey}
             className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {savingNote ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            保存笔记
+            {savingNote ? "保存中" : draftKey ? "立即保存" : "已保存"}
           </button>
         </div>
+        {saveError && <p role="alert" className="text-sm text-red-500">{saveError}</p>}
+        {draftKey && !savingNote && !saveError && <p aria-live="polite" className="text-xs text-muted">停止输入约 1.2 秒后自动保存</p>}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FieldInput label="标题" value={editing.title} onChange={(v) => setEditing({ ...editing, title: v })} />
@@ -336,7 +399,7 @@ export default function NotesEditor({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <button
-              onClick={() => setEditing(note)}
+              onClick={() => { setEditing(note); setSaveError(""); setAutoSaveBlocked(false); }}
               className="rounded p-1.5 text-muted transition-colors hover:text-accent"
               title="编辑"
             >

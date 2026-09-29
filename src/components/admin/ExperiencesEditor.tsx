@@ -34,6 +34,7 @@ export default function ExperiencesEditor({ experiences, onChange, posts = [] }:
   };
 
   const removeExperience = (id: string) => {
+    if (!confirm("删除后会自动保存，确定删除这段经历？")) return;
     onChange(experiences.filter((e) => e.id !== id));
   };
 

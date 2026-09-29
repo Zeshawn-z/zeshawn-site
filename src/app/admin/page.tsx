@@ -31,7 +31,8 @@ import ProjectsEditor from "@/components/admin/ProjectsEditor";
 import ExperiencesEditor from "@/components/admin/ExperiencesEditor";
 import SkillsEditor from "@/components/admin/SkillsEditor";
 import ImagesManager from "@/components/admin/ImagesManager";
-import { requireOk } from "@/lib/admin/client-api";
+import { HttpError, requireOk } from "@/lib/admin/client-api";
+import { useDebouncedAutosave } from "@/lib/admin/use-debounced-autosave";
 
 type BulkKey = "projects" | "experiences" | "skills" | "config";
 type BulkVersions = Record<BulkKey, string>;
@@ -63,6 +64,9 @@ export default function AdminDashboard() {
   const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [loadError, setLoadError] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [autoSaveBlocked, setAutoSaveBlocked] = useState(false);
+  const [postPending, setPostPending] = useState(false);
+  const [notePending, setNotePending] = useState(false);
   const [versions, setVersions] = useState<BulkVersions>({ projects: "", experiences: "", skills: "", config: "" });
   const [baseline, setBaseline] = useState<BulkVersions | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -143,6 +147,7 @@ export default function AdminDashboard() {
   const loadData = useCallback(async () => {
     setLoadState("loading");
     setLoadError("");
+    setAutoSaveBlocked(false);
     try {
       const [p, e, s, posts, notes, noteGroups, gb, cm, cfg] = await Promise.all([
         loadAdminResource("/api/admin/projects", "项目", "array", true),
@@ -185,6 +190,12 @@ export default function AdminDashboard() {
   }, [authed, loadData]);
 
   const handleLogout = async () => {
+    if (saving) {
+      setSaveError("内容正在保存，请稍候再退出");
+      return;
+    }
+    if ((changedKeys.length > 0 || postPending || notePending) &&
+      !confirm("仍有未保存的修改，确定退出并放弃这些修改？")) return;
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/admin/login");
   };
@@ -203,9 +214,13 @@ export default function AdminDashboard() {
   const changedKeys: BulkKey[] = baseline
     ? (["projects", "experiences", "skills", "config"] as BulkKey[]).filter((key) => currentSnapshots[key] !== baseline[key])
     : [];
+  const pendingKey = changedKeys.length
+    ? JSON.stringify(currentSnapshots)
+    : null;
 
   const handleSave = async () => {
     if (loadState !== "ready" || saving || changedKeys.length === 0) return;
+    markAutoSaveAttempt();
     setSaving(true);
     setSaved(false);
     setSaveError("");
@@ -245,17 +260,30 @@ export default function AdminDashboard() {
           : []
       );
       if (failures.length > 0) {
+        if (results.some((result) => result.status === "rejected" &&
+          result.reason instanceof HttpError && [409, 428].includes(result.reason.status))) {
+          setAutoSaveBlocked(true);
+        }
         setSaveError(`部分内容未保存：${failures.join("；")}`);
       } else if (changedKeys.some((key) => latestSnapshotsRef.current[key] !== currentSnapshots[key])) {
         setSaveError("保存期间又有修改，请再次保存剩余改动");
       } else {
+        setAutoSaveBlocked(false);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
       }
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : "自动保存失败，请点击立即保存重试");
     } finally {
       setSaving(false);
     }
   };
+
+  const markAutoSaveAttempt = useDebouncedAutosave(
+    pendingKey,
+    loadState === "ready" && !saving && !autoSaveBlocked,
+    handleSave
+  );
 
   if (authed === null) {
     return (
@@ -376,8 +404,8 @@ export default function AdminDashboard() {
             title="保存项目、经历、技能和设置的改动"
             className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
-            {saving ? "保存中" : saved ? "已保存" : "保存全部"}
+            {saving ? <Loader2 size={14} className="animate-spin" /> : saved && changedKeys.length === 0 ? <CheckCircle size={14} /> : <Save size={14} />}
+            {saving ? "保存中" : changedKeys.length ? "立即保存" : saved ? "已保存" : "自动保存"}
           </button>
           <button
             onClick={handleLogout}
@@ -404,8 +432,8 @@ export default function AdminDashboard() {
                 title="保存项目、经历、技能和设置的改动"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
               >
-                {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
-                {saving ? "保存中" : saved ? "已保存" : "保存"}
+                {saving ? <Loader2 size={14} className="animate-spin" /> : saved && changedKeys.length === 0 ? <CheckCircle size={14} /> : <Save size={14} />}
+                {saving ? "保存中" : changedKeys.length ? "立即保存" : saved ? "已保存" : "自动保存"}
               </button>
               <button
                 onClick={handleLogout}
@@ -468,8 +496,8 @@ export default function AdminDashboard() {
                       title="保存项目、经历、技能和设置的改动"
                       className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                     >
-                      {saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <CheckCircle size={14} /> : <Save size={14} />}
-                      {saving ? "保存中" : saved ? "已保存" : "保存全部"}
+                      {saving ? <Loader2 size={14} className="animate-spin" /> : saved && changedKeys.length === 0 ? <CheckCircle size={14} /> : <Save size={14} />}
+                      {saving ? "保存中" : changedKeys.length ? "立即保存" : saved ? "已保存" : "自动保存"}
                     </button>
                     <button
                       onClick={handleLogout}
@@ -487,6 +515,11 @@ export default function AdminDashboard() {
 
         {/* Content area */}
         <div className="min-w-0 flex-1">
+          {(tab === "projects" || tab === "experiences" || tab === "skills" || tab === "config") && (
+            <p aria-live="polite" className="mb-3 text-xs text-muted">
+              {saving ? "自动保存中…" : autoSaveBlocked ? "版本冲突，自动保存已暂停" : saveError ? "自动保存失败，可点击立即保存重试" : changedKeys.length ? "修改后约 1.2 秒自动保存" : "所有修改已保存"}
+            </p>
+          )}
           {isTall && (
             <div className="mb-5 hidden items-center justify-between lg:flex">
               <h2 className="text-lg font-semibold tracking-tight">
@@ -503,19 +536,20 @@ export default function AdminDashboard() {
               )}
             </div>
           )}
-          {tab === "posts" && (
+          <div hidden={tab !== "posts"}>
             <PostsEditor
               posts={posts}
               setPosts={setPosts}
               showIndex={contentShowIndex}
               initialEditId={initialPostEditId}
+              onPendingChange={setPostPending}
               onViewComments={(slug) => {
                 setCommentFilterSlug(slug);
                 setTab("comments");
               }}
             />
-          )}
-          {tab === "notes" && (
+          </div>
+          <div hidden={tab !== "notes"}>
             <NotesEditor
               notes={notes}
               setNotes={setNotes}
@@ -523,8 +557,9 @@ export default function AdminDashboard() {
               setGroupOrders={setNoteGroupOrders}
               showIndex={contentShowIndex}
               initialEditId={initialNoteEditId}
+              onPendingChange={setNotePending}
             />
-          )}
+          </div>
           {tab === "projects" && <ProjectsEditor projects={projects} onChange={setProjects} posts={posts} />}
           {tab === "experiences" && <ExperiencesEditor experiences={experiences} onChange={setExperiences} posts={posts} />}
           {tab === "skills" && <SkillsEditor skills={skills} onChange={setSkills} />}

@@ -5,7 +5,8 @@ import { Plus, Trash2, Save, Loader2, Eye, EyeOff, Edit3, MessageCircle, ArrowLe
 import type { PostAdmin } from "./types";
 import { FieldCommaInput, FieldInput } from "./FormFields";
 import MdEditor from "@/components/admin/MdEditor";
-import { requireOk } from "@/lib/admin/client-api";
+import { HttpError, requireOk } from "@/lib/admin/client-api";
+import { useDebouncedAutosave } from "@/lib/admin/use-debounced-autosave";
 
 function parseCommaSeparated(input: string): string[] {
   return input
@@ -14,27 +15,58 @@ function parseCommaSeparated(input: string): string[] {
     .filter(Boolean);
 }
 
+function postDraft(post: PostAdmin): string {
+  return JSON.stringify({
+    slug: post.slug,
+    title: post.title,
+    description: post.description,
+    content: post.content,
+    contentType: post.contentType,
+    pdfId: post.pdfId ?? null,
+    date: post.date,
+    tags: post.tags,
+    published: post.published,
+    commentsEnabled: post.commentsEnabled,
+  });
+}
+
 export default function PostsEditor({
   posts,
   setPosts,
   onViewComments,
   showIndex,
   initialEditId,
+  onPendingChange,
 }: {
   posts: PostAdmin[];
-  setPosts: (p: PostAdmin[]) => void;
+  setPosts: React.Dispatch<React.SetStateAction<PostAdmin[]>>;
   onViewComments: (slug: string) => void;
   showIndex: boolean;
   initialEditId?: string | null;
+  onPendingChange: (pending: boolean) => void;
 }) {
   const [editing, setEditing] = useState<PostAdmin | null>(null);
   const [savingPost, setSavingPost] = useState(false);
+  const savingPostRef = useRef(false);
+  const [saveError, setSaveError] = useState("");
+  const [autoSaveBlocked, setAutoSaveBlocked] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "markdown" | "pdf">("all");
   const [tagFilter, setTagFilter] = useState<string>("all");
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const initialAppliedRef = useRef(false);
+
+  const persistedPost = editing ? posts.find((post) => post.id === editing.id) : null;
+  const draftKey = editing && persistedPost && postDraft(editing) !== postDraft(persistedPost)
+    ? `${editing.id}:${postDraft(editing)}`
+    : null;
+  const latestEditingRef = useRef(editing);
+  latestEditingRef.current = editing;
+
+  useEffect(() => {
+    onPendingChange(Boolean(draftKey) || savingPost);
+  }, [draftKey, savingPost, onPendingChange]);
 
   useEffect(() => {
     if (initialAppliedRef.current || !initialEditId) return;
@@ -84,40 +116,70 @@ export default function PostsEditor({
       const post = await res.json();
       setPosts([post, ...posts]);
       setEditing(post);
+      setSaveError("");
+      setAutoSaveBlocked(false);
     } catch (error) {
       alert(error instanceof Error ? error.message : "创建文章失败");
     }
   };
 
-  const savePost = async () => {
-    if (!editing) return;
+  const savePost = async (): Promise<boolean> => {
+    if (!editing || !draftKey || savingPostRef.current) return false;
+    markAutoSaveAttempt();
+    savingPostRef.current = true;
     setSavingPost(true);
+    setSaveError("");
+    const snapshot = editing;
     try {
-      const response = await requireOk(await fetch(`/api/admin/posts/${editing.id}`, {
+      const response = await requireOk(await fetch(`/api/admin/posts/${snapshot.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          slug: editing.slug,
-          title: editing.title,
-          description: editing.description,
-          content: editing.content,
-          contentType: editing.contentType,
-          pdfId: editing.pdfId || null,
-          date: editing.date,
-          tags: parseCommaSeparated((editing.tags || []).join(",")),
-          published: editing.published,
-          commentsEnabled: editing.commentsEnabled,
-          expectedUpdatedAt: editing.updatedAt,
+          slug: snapshot.slug,
+          title: snapshot.title,
+          description: snapshot.description,
+          content: snapshot.content,
+          contentType: snapshot.contentType,
+          pdfId: snapshot.pdfId || null,
+          date: snapshot.date,
+          tags: parseCommaSeparated((snapshot.tags || []).join(",")),
+          published: snapshot.published,
+          commentsEnabled: snapshot.commentsEnabled,
+          expectedUpdatedAt: snapshot.updatedAt,
         }),
       }), "保存文章失败");
       const savedPost = await response.json() as PostAdmin;
-      setPosts(posts.map((p) => (p.id === editing.id ? savedPost : p)));
-      setEditing(savedPost);
+      setPosts((current) => current.map((p) => (p.id === snapshot.id ? savedPost : p)));
+      setEditing((current) => {
+        if (!current || current.id !== snapshot.id) return current;
+        return postDraft(current) === postDraft(snapshot)
+          ? savedPost
+          : { ...current, updatedAt: savedPost.updatedAt };
+      });
+      setAutoSaveBlocked(false);
+      return latestEditingRef.current?.id === snapshot.id && postDraft(latestEditingRef.current) === postDraft(snapshot);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "保存文章失败");
+      setSaveError(error instanceof Error ? error.message : "保存文章失败");
+      if (error instanceof HttpError && [409, 428].includes(error.status)) setAutoSaveBlocked(true);
+      return false;
     } finally {
+      savingPostRef.current = false;
       setSavingPost(false);
     }
+  };
+
+  const markAutoSaveAttempt = useDebouncedAutosave(
+    draftKey,
+    Boolean(editing) && !savingPost && !uploadingPdf && !autoSaveBlocked,
+    savePost
+  );
+
+  const leaveEditor = async () => {
+    if (savingPostRef.current) return;
+    if (draftKey && !(await savePost())) return;
+    setEditing(null);
+    setSaveError("");
+    setAutoSaveBlocked(false);
   };
 
   const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -146,11 +208,11 @@ export default function PostsEditor({
         return;
       }
       const data = await res.json();
-      setEditing({
-        ...editing,
+      setEditing((current) => current?.id === editing.id ? {
+        ...current,
         pdfId: data.id,
         content: `[PDF] ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`,
-      });
+      } : current);
     } catch {
       alert("上传失败，请重试");
     } finally {
@@ -193,7 +255,7 @@ export default function PostsEditor({
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <button onClick={() => setEditing(null)} className="inline-flex items-center gap-1.5 text-sm leading-none text-muted hover:text-foreground transition-colors">
+          <button onClick={leaveEditor} disabled={savingPost} className="inline-flex items-center gap-1.5 text-sm leading-none text-muted hover:text-foreground transition-colors disabled:opacity-50">
             <ArrowLeft size={14} className="shrink-0" />
             返回列表
           </button>
@@ -222,15 +284,17 @@ export default function PostsEditor({
               {editing.published ? "已发布" : "草稿"}
             </button>
             <button
-              onClick={savePost}
-              disabled={savingPost}
+              onClick={() => { void savePost(); }}
+              disabled={savingPost || !draftKey}
               className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {savingPost ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-              保存文章
+              {savingPost ? <Loader2 size={14} className="animate-spin" /> : draftKey ? <Save size={14} /> : <FileCheck size={14} />}
+              {savingPost ? "保存中" : draftKey ? "立即保存" : "已保存"}
             </button>
           </div>
         </div>
+        {saveError && <p role="alert" className="text-sm text-red-500">{saveError}</p>}
+        {draftKey && !savingPost && !saveError && <p aria-live="polite" className="text-xs text-muted">停止输入约 1.2 秒后自动保存</p>}
 
         <div className="grid gap-4 sm:grid-cols-2">
           <FieldInput label="标题" value={editing.title} onChange={(v) => setEditing({ ...editing, title: v })} />
@@ -385,7 +449,7 @@ export default function PostsEditor({
             <div className="mt-0.5 text-xs text-muted">{post.date} · /{post.slug}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <button onClick={() => setEditing(post)} className="rounded p-1.5 text-muted transition-colors hover:text-accent">
+            <button onClick={() => { setEditing(post); setSaveError(""); setAutoSaveBlocked(false); }} className="rounded p-1.5 text-muted transition-colors hover:text-accent">
               <Edit3 size={14} />
             </button>
             <button onClick={() => onViewComments(post.slug)} className="rounded p-1.5 text-muted transition-colors hover:text-accent" title="查看评论">
