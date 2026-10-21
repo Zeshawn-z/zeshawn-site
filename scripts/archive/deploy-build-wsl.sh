@@ -59,4 +59,7 @@ rm -rf node_modules .next
 npm ci
 npm run build
 
-tar -czf next-standalone.tar.gz .next/standalone .next/static public
+# Put static assets into the standalone root so the archive matches server-deploy.sh.
+cp -r .next/static .next/standalone/.next/static
+cp -r public .next/standalone/public
+tar -czf next-standalone.tar.gz -C .next/standalone .

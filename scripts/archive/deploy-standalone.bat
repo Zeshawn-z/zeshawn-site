@@ -2,7 +2,7 @@
 setlocal EnableExtensions
 
 set "ARCHIVE=next-standalone.tar.gz"
-set "REMOTE_HOST=ali"
+set "REMOTE_HOST=tx"
 set "REMOTE_APP=/var/www/zeshawn-site"
 set "REMOTE_ARCHIVE=%REMOTE_APP%/%ARCHIVE%"
 set "REMOTE_SCRIPT=server-deploy.sh"
