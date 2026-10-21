@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal EnableExtensions
 
-set "REMOTE_HOST=ali"
+set "REMOTE_HOST=tx"
 set "REMOTE_APP=/var/www/zeshawn-site"
 set "ARCHIVE=zeshawn-site.tar.gz"
 set "REMOTE_SCRIPT=server-deploy.sh"
@@ -42,7 +42,7 @@ if errorlevel 1 (
 )
 
 echo [3/3] Running server deploy...
-ssh %REMOTE_HOST% "set -euo pipefail; chmod +x %REMOTE_APP%/%REMOTE_SCRIPT%; bash %REMOTE_APP%/%REMOTE_SCRIPT% %REMOTE_APP% %ARCHIVE% zeshawn-next"
+ssh %REMOTE_HOST% "set -euo pipefail; chmod +x %REMOTE_APP%/%REMOTE_SCRIPT%;sudo bash %REMOTE_APP%/%REMOTE_SCRIPT% %REMOTE_APP% %ARCHIVE% zeshawn-next"
 if errorlevel 1 (
   echo ERROR: Server deploy failed.
   exit /b 1

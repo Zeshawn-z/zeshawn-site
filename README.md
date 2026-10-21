@@ -146,6 +146,22 @@ sudo bash scripts/server-init.sh example.com admin@example.com /var/www/zeshawn-
 2. 从 GitHub Release 下载产物并部署。
 3. 不包含首次初始化引导（首次部署请用 `deploy-oneclick.ps1`）。
 
+## 3.1 deploy-local（本地构建更新）
+
+如果当前修改还没有发布到 GitHub Release，可在 Windows 项目根目录执行：
+
+```bat
+scripts\deploy-local.bat
+```
+
+脚本会使用 WSL 的 Linux Node 构建 standalone 包，上传到服务器并复用服务器部署脚本完成备份、替换和重启。也可以传入 SSH Host 别名：
+
+```bat
+scripts\deploy-local.bat tx
+```
+
+执行前需要确保 WSL2、Linux Node 20 和 SSH 配置可用。
+
 ## 4. 数据与隐私
 
 本项目默认只忽略数据库与私有备份目录，`data/*.json` 作为样板数据可提交到 Git：
@@ -174,6 +190,7 @@ scripts/
   migrate.ts            # 数据迁移脚本
   deploy-oneclick.ps1   # 一键初始化+部署+启动（交互式）
   deploy-release.bat    # 个人更新脚本（hostname 场景）
+  deploy-local.bat      # WSL 本地构建并更新服务器
   server-deploy.sh      # 服务器部署/更新
   server-init.sh        # 服务器初始化
   archive/              # 已归档旧脚本
